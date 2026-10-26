@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=nformare
+Description=nformare boot splash (logo centered on the app background colour)
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/nformare
+ScriptFile=/usr/share/plymouth/themes/nformare/nformare.script

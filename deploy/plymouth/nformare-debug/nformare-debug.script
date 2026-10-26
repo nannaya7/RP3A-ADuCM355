@@ -1,0 +1,133 @@
+# nformare-debug: boot splash DIAGNOSTIC theme. Shows what Plymouth thinks the screen is, at every stage of the boot.
+#   - red frame along the edges of the window Plymouth reports (shows clipping / offsets)
+#   - red centre cross, "TOP-LEFT" corner mark and "BOTTOM-RIGHT" corner mark (shows rotation / flipping)
+#   - W = width, H = height reported by Plymouth, N = how many times the size changed so far
+#   - the (unrotated) logo, laid out like the real theme
+# All text is pre-rendered into PNG files (no label plugin needed in the initramfs): see tools/make_boot_debug.py.
+
+Window.SetBackgroundTopColor(0.98, 0.96, 0.80);
+Window.SetBackgroundBottomColor(0.98, 0.96, 0.80);
+
+px = Image("px.png");
+img_tl = Image("tl.png");
+img_br = Image("br.png");
+lab_w = Image("w.png");
+lab_h = Image("h.png");
+lab_n = Image("n.png");
+logo.src = Image("logo.png");
+
+dig[0] = Image("d0.png");
+dig[1] = Image("d1.png");
+dig[2] = Image("d2.png");
+dig[3] = Image("d3.png");
+dig[4] = Image("d4.png");
+dig[5] = Image("d5.png");
+dig[6] = Image("d6.png");
+dig[7] = Image("d7.png");
+dig[8] = Image("d8.png");
+dig[9] = Image("d9.png");
+
+i = 0;
+while (i < 4) {
+    frame[i] = Sprite(px);
+    w_s[i] = Sprite(dig[0]);
+    h_s[i] = Sprite(dig[0]);
+    n_s[i] = Sprite(dig[0]);
+    i = i + 1;
+}
+cross_h = Sprite(px);
+cross_v = Sprite(px);
+sp_tl = Sprite(img_tl);
+sp_br = Sprite(img_br);
+sp_lw = Sprite(lab_w);
+sp_lh = Sprite(lab_h);
+sp_ln = Sprite(lab_n);
+logo.sprite = Sprite(logo.src);
+state.w = 0;
+state.h = 0;
+state.n = 0;
+
+fun show_number(sprites, value, x, y) {
+    d3 = Math.Int(value / 1000);
+    r = value - d3 * 1000;
+    d2 = Math.Int(r / 100);
+    r = r - d2 * 100;
+    d1 = Math.Int(r / 10);
+    d0 = r - d1 * 10;
+    step = dig[0].GetWidth();
+    sprites[0].SetImage(dig[d3]);
+    sprites[1].SetImage(dig[d2]);
+    sprites[2].SetImage(dig[d1]);
+    sprites[3].SetImage(dig[d0]);
+    k = 0;
+    while (k < 4) {
+        sprites[k].SetPosition(x + k * step, y, 60);
+        k = k + 1;
+    }
+    if (d3 == 0) {
+        sprites[0].SetOpacity(0);
+    } else {
+        sprites[0].SetOpacity(1);
+    }
+}
+
+fun layout(w, h) {
+    t = 6;
+    frame[0].SetImage(px.Scale(w, t));
+    frame[0].SetPosition(0, 0, 50);
+    frame[1].SetImage(px.Scale(w, t));
+    frame[1].SetPosition(0, h - t, 50);
+    frame[2].SetImage(px.Scale(t, h));
+    frame[2].SetPosition(0, 0, 50);
+    frame[3].SetImage(px.Scale(t, h));
+    frame[3].SetPosition(w - t, 0, 50);
+    cross_h.SetImage(px.Scale(w, 2));
+    cross_h.SetPosition(0, h / 2, 40);
+    cross_v.SetImage(px.Scale(2, h));
+    cross_v.SetPosition(w / 2, 0, 40);
+
+    sp_tl.SetPosition(t + 4, t + 4, 60);
+    sp_br.SetPosition(w - img_br.GetWidth() - t - 4, h - img_br.GetHeight() - t - 4, 60);
+
+    lx = w / 2 - 200;
+    ly = h / 2 - 190;
+    lh = lab_w.GetHeight() + 8;
+    sp_lw.SetPosition(lx, ly, 60);
+    show_number(w_s, w, lx + lab_w.GetWidth(), ly);
+    sp_lh.SetPosition(lx, ly + lh, 60);
+    show_number(h_s, h, lx + lab_h.GetWidth(), ly + lh);
+    sp_ln.SetPosition(lx, ly + 2 * lh, 60);
+    show_number(n_s, state.n, lx + lab_n.GetWidth(), ly + 2 * lh);
+
+    if (w < h) {
+        target = w * 0.82;
+    } else {
+        target = w * 0.5;
+    }
+    if (target > 640) {
+        target = 640;
+    }
+    s = target / logo.src.GetWidth();
+    img = logo.src.Scale(logo.src.GetWidth() * s, logo.src.GetHeight() * s);
+    logo.sprite.SetImage(img);
+    logo.sprite.SetPosition(w / 2 - img.GetWidth() / 2, h / 2 + 40, 10);
+}
+
+fun refresh() {
+    w = Window.GetWidth();
+    h = Window.GetHeight();
+    if (w != state.w) {
+        state.w = w;
+        state.h = h;
+        state.n = state.n + 1;
+        layout(w, h);
+    } else if (h != state.h) {
+        state.w = w;
+        state.h = h;
+        state.n = state.n + 1;
+        layout(w, h);
+    }
+}
+
+Plymouth.SetRefreshFunction(refresh);
+refresh();

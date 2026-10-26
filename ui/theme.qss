@@ -1,0 +1,287 @@
+/* frontend/vital LoginPage 디자인 토큰을 그대로 옮긴 스타일 (가이드 v3 §로그인) */
+* { font-family: "Pretendard"; color: #424242; }
+
+#card { background: rgba(255,255,255,245); border-radius: 16px; }
+
+/* 입력 필드: 높이 44 · r10 · #E3F2EA · 테두리 없음 */
+QFrame#field { background: #E3F2EA; border-radius: 10px; border: 1px solid transparent; }
+QFrame#field[error="true"] { border: 1px solid #C73838; }
+QFrame#field QLineEdit { background: transparent; border: none; font-size: 14px; color: #424242; }
+QFrame#field QToolButton { background: transparent; border: none; }
+
+#errorText { color: #AD3131; font-size: 11px; }
+#errorBanner { background: #FFCFCF; color: #AD3131; border-radius: 10px; font-size: 14px; padding: 12px 16px; }
+
+QCheckBox { font-size: 12px; spacing: 8px; }
+QCheckBox::indicator { width: 17px; height: 17px; border-radius: 4px; background: #E3F2EA; }
+QCheckBox::indicator:checked { background: #2FAF87; image: url(%CHECK%); }
+
+#linkBtn { background: transparent; border: none; font-size: 12px; padding: 0; }
+#linkBtn:hover { color: #0C8444; }
+#signupLink { color: #0C8444; font-weight: 600; background: transparent; border: none; font-size: 12px; padding: 0; }
+#signupLink:hover { text-decoration: underline; }
+
+/* 로그인 버튼: h44 · r10 · #2FAF87 · 14/700 흰색 */
+#loginBtn { background: #2FAF87; color: #FFFFFF; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; }
+#loginBtn:hover { background: #2A9F7A; }
+#loginBtn:pressed { background: #258D6C; }
+#loginBtn:disabled { background: rgba(47,175,135,150); }
+
+/* 건너뛰기(개발용): 보조 버튼 */
+#skipBtn { background: transparent; color: #424242; border: 1px solid #C9D8D1; border-radius: 10px; font-size: 13px; }
+#skipBtn:pressed { background: #E3EFE9; }
+
+#signupText { font-size: 12px; }
+
+#signupText { color: #424242; }
+
+/* 세로(480x800) 로그인 */
+#portraitHeadline { font-size: 24px; font-weight: 700; }
+#portraitHeadline * { font-weight: 700; }
+/* 가로 로그인 좌측 상단 문구: 세로(24px)보다 30% 크게 */
+#landscapeHeadline { font-size: 31px; font-weight: 700; }
+#landscapeHeadline * { font-weight: 700; }
+QFrame#field[touch="true"] { background: #FFFFFF; border-radius: 12px; }
+QFrame#field[touch="true"][error="true"] { border: 1px solid #C73838; }
+QFrame#field[touch="true"] QLineEdit { font-size: 16px; }
+QCheckBox[touch="true"] { font-size: 14px; spacing: 10px; }
+QCheckBox[touch="true"]::indicator { width: 24px; height: 24px; border-radius: 6px; background: #FFFFFF; border: 1px solid #BFD6CB; }
+QCheckBox[touch="true"]::indicator:checked { background: #2FAF87; border: 1px solid #2FAF87; image: url(%CHECK%); }
+#loginBtn[touch="true"] { font-size: 17px; border-radius: 12px; }
+#skipBtn[touch="true"] { font-size: 16px; border-radius: 12px; background: rgba(255,255,255,200); }
+
+/* 앱 내장 터치 키보드 */
+#vkb { background: rgba(233,241,237,250); border-top: 1px solid #C9D8D1; }
+#vkb QPushButton { border-radius: 8px; font-size: 20px; font-weight: 500; border: none; }
+#vkb[compact="true"] QPushButton { font-size: 18px; }
+#vkb[compact="true"] #kbFn, #vkb[compact="true"] #kbDone { font-size: 13px; }
+#kbKey { background: #FFFFFF; color: #2B2B2B; }
+#kbKey:pressed { background: #BFE3D3; }
+#kbFn { background: #D6E6DE; color: #2B2B2B; font-size: 16px; }
+#kbFn:pressed { background: #BFE3D3; }
+#kbFn[active="true"] { background: #2FAF87; color: #FFFFFF; }
+#kbDone { background: #2FAF87; color: #FFFFFF; font-size: 16px; font-weight: 700; }
+#kbDone:pressed { background: #258D6C; }
+
+/* ===== 측정 화면 (ui/measure_page.py) — 화면을 손볼 때는 여기와 measure_page.py 의 배치만 고치면 된다 ===== */
+#measurePage { background: #E9F1ED; }
+#pageTitle { font-size: 26px; font-weight: 700; color: #1F2D27; }
+#moduleText { font-size: 13px; color: #5B6B64; }
+#ghostBtn { background: transparent; color: #424242; border: 1px solid #C9D8D1; border-radius: 10px; font-size: 14px; }
+#ghostBtn:pressed { background: #E3EFE9; }
+#ghostBtn:disabled { color: #A7B4AE; border-color: #D8E2DD; }
+
+#stageChip { background: #F6FAF8; color: #7C8B84; border: 1px solid #D2E0D9; border-radius: 10px; font-size: 14px; font-weight: 600; }
+#stageChip[status="active"] { background: #FFFFFF; color: #1F2D27; border: 2px solid #2FAF87; }
+#stageChip[status="done"] { background: #D6F0E5; color: #1D7A5A; border: 1px solid #9ED8BF; }
+#stageChip[status="error"] { background: #FFE3E3; color: #AD3131; border: 2px solid #E39A9A; }
+
+#measurePage[compact="true"] #timerText { font-size: 52px; }
+#measurePage[compact="true"] #pageTitle { font-size: 22px; }
+#measurePage[compact="true"] #stageTitle { font-size: 19px; }
+#measurePage[compact="true"] #instruction { font-size: 14px; }
+#measurePage[compact="true"] #resultValue { font-size: 46px; }
+#mainCard, #sideCard { background: rgba(255,255,255,235); border-radius: 16px; }
+#stageTitle { font-size: 22px; font-weight: 700; color: #1F2D27; }
+#instruction { font-size: 16px; color: #424242; }
+#timerLabel { font-size: 14px; color: #5B6B64; }
+#timerText { font-size: 64px; font-weight: 700; color: #1F2D27; }
+#timerText[waiting="true"] { color: #C47A00; }
+#progressText { font-size: 13px; color: #5B6B64; }
+#cardTitle { font-size: 16px; font-weight: 700; color: #1F2D27; }
+
+QProgressBar#mainBar, QProgressBar#sensorBar { background: #E3F2EA; border: none; border-radius: 6px; }
+QProgressBar#mainBar::chunk, QProgressBar#sensorBar::chunk { background: #2FAF87; border-radius: 6px; }
+#sensorRow { background: #F4F9F6; border-radius: 10px; }
+#sensorName { font-size: 15px; font-weight: 600; color: #1F2D27; }
+#sensorCount { font-size: 13px; color: #5B6B64; }
+#sensorState { font-size: 13px; border-radius: 8px; padding: 3px 6px; background: #E8EEEB; color: #5B6B64; }
+#sensorState[status="active"] { background: #FFF1CC; color: #8A5A00; }
+#sensorState[status="done"] { background: #D6F0E5; color: #1D7A5A; }
+#sensorState[status="sat"] { background: #FFE3E3; color: #AD3131; }
+
+#resultCard { background: #F4F9F6; border: 1px solid #CFE3D9; border-radius: 12px; }
+#resultCaption { font-size: 13px; color: #5B6B64; }
+#resultValue { font-size: 54px; font-weight: 700; color: #1F2D27; }
+#resultQc { font-size: 15px; font-weight: 700; }
+#resultQc[ok="true"] { color: #1D7A5A; }
+#resultQc[ok="false"] { color: #AD3131; }
+#resultDetail { font-size: 12px; color: #424242; }
+#resultNote { font-size: 12px; color: #8A5A00; }
+
+#banner { border-radius: 10px; padding: 10px 16px; font-size: 14px; background: #E3F2EA; color: #1D7A5A; }
+#banner[level="warn"] { background: #FFF1CC; color: #8A5A00; }
+#banner[level="error"] { background: #FFCFCF; color: #AD3131; }
+
+#primaryBtn { background: #2FAF87; color: #FFFFFF; border: none; border-radius: 12px; font-size: 20px; font-weight: 700; }
+#primaryBtn:pressed { background: #258D6C; }
+#primaryBtn:disabled { background: rgba(47,175,135,110); }
+#dangerBtn { background: #FFFFFF; color: #AD3131; border: 1px solid #E39A9A; border-radius: 12px; font-size: 16px; font-weight: 600; }
+#dangerBtn:pressed { background: #FFE3E3; }
+#dangerBtn:disabled { color: #C9B3B3; border-color: #E8D6D6; }
+
+/* 설정 화면 (Wi-Fi / 블루투스) */
+#settingsPage { background: #E9F1ED; }
+#settingsPage[compact="true"] #pageTitle { font-size: 22px; }
+#netStatus { font-size: 15px; color: #1F2D27; font-weight: 600; }
+#settingsPage[compact="true"] #netStatus { font-size: 13px; }
+QProgressBar#netBusy { background: #CFE3D9; border: none; border-radius: 2px; }
+QProgressBar#netBusy::chunk { background: #2FAF87; border-radius: 2px; }
+#devList { background: #FFFFFF; border-radius: 14px; border: none; outline: none; }
+#devList::item { background: transparent; }
+#devDetail { background: #FFFFFF; border-radius: 14px; }
+#sensorState { font-size: 14px; font-weight: 600; color: #8A9A93; }
+#sensorState[level="ok"] { color: #1D7A5A; }
+#sensorState[level="warn"] { color: #B5701B; }
+#devTitle { font-size: 20px; font-weight: 700; color: #1F2D27; }
+#devInfo { font-size: 14px; color: #5B6B64; }
+#settingsPage[compact="true"] #devTitle { font-size: 18px; }
+#settingsPage[compact="true"] #devInfo { font-size: 13px; }
+#netMsg { border-radius: 8px; padding: 8px 12px; font-size: 14px; background: #D6F0E5; color: #1D7A5A; }
+#netMsg[level="error"] { background: #FFCFCF; color: #AD3131; }
+#devDetail QPushButton#ghostBtn, #devDetail QPushButton#dangerBtn { font-size: 16px; }
+#devDetail QFrame#field QLineEdit { font-size: 16px; }
+
+/* UART 모니터링 화면 */
+#monitorPage { background: #E9F1ED; }
+#monitorPage[compact="true"] #pageTitle { font-size: 22px; }
+#monView { background: #FFFFFF; border: none; border-radius: 12px; padding: 8px; color: #1F2D27; }
+#monStatus { font-size: 14px; color: #5B6B64; }
+#monNote { border-radius: 8px; padding: 8px 12px; font-size: 13px; background: #D6F0E5; color: #1D7A5A; }
+#monNote[level="error"] { background: #FFCFCF; color: #AD3131; }
+
+/* ===== 가로 측정 화면 (대시보드) ===== */
+#dashPage { background: #F2F6FB; }
+#dashBack { background: #FFFFFF; border: 1px solid #D5E0EE; border-radius: 12px; font-size: 20px; color: #2B3A4A; }
+#dashBack:pressed { background: #E6EEF8; }
+#modelTab { border: none; border-radius: 10px; font-size: 20px; font-weight: 700; background: #E3EAF3; color: #5E6E80; }
+#modelTab[active="true"] { background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #3B8CF5, stop:1 #1F66CE); color: #FFFFFF; }
+#dashClock { font-size: 16px; color: #3C4B5C; }
+#dashBanner { border-radius: 10px; padding: 8px 14px; font-size: 14px; background: #E3F0FF; color: #1F5FB5; }
+#dashBanner[level="warn"] { background: #FFF1CC; color: #8A5A00; }
+#dashBanner[level="error"] { background: #FFCFCF; color: #AD3131; }
+
+#dashCard { background: #FFFFFF; border: 1px solid #E1E9F4; border-radius: 14px; }
+#cardHeadTitle { font-size: 20px; font-weight: 700; color: #1F2D3D; }
+#cardHeadSub { font-size: 13px; color: #8795A6; margin-left: 4px; }
+#subPanel { background: #F1F6FD; border-radius: 12px; }
+#subPanelTitle { font-size: 17px; font-weight: 700; color: #2F80ED; }
+#subPanelHint { font-size: 12px; color: #8795A6; margin-left: 6px; }
+#fieldLabel { font-size: 14px; font-weight: 600; color: #2B3A4A; }
+
+#textInput, #comboInput, #inputFrame, #chipSelect { background: #FFFFFF; border: 1px solid #D5E0EE; border-radius: 10px; }
+#textInput { padding: 0 12px; font-size: 16px; selection-background-color: #BFD8FA; }
+#textInput:focus, #inputFrame:focus-within { border: 1px solid #2F80ED; }
+#inputInner { background: transparent; border: none; font-size: 16px; }
+#inputUnit { font-size: 14px; color: #8795A6; }
+#comboInput { padding: 0 12px; font-size: 16px; }
+#comboInput::drop-down { border: none; width: 30px; }
+#comboInput QAbstractItemView { font-size: 17px; background: #FFFFFF; selection-background-color: #DCEBFE; selection-color: #1F2D3D; outline: none; }
+#comboInput QAbstractItemView::item { min-height: 42px; padding-left: 8px; }
+#dashPage *[error="true"] { border: 1px solid #E04848; }
+#chip { background: #E3EEFF; border: none; border-radius: 12px; padding: 3px 10px; font-size: 14px; color: #1F5FB5; }
+#chipMore { font-size: 13px; color: #5E6E80; }
+#chipPlaceholder { font-size: 15px; color: #9AA7B6; }
+#chipArrow { border: none; background: transparent; font-size: 16px; color: #5E6E80; }
+#chipMenu { background: #FFFFFF; border: 1px solid #D5E0EE; font-size: 17px; padding: 4px; }
+#chipMenu::item { padding: 10px 28px 10px 14px; min-height: 28px; }
+#chipMenu::item:selected { background: #DCEBFE; color: #1F2D3D; }
+
+#resultPanel { background: #E7F6EF; border-radius: 12px; }
+#resTitle { font-size: 24px; font-weight: 700; color: #1F2D3D; }
+#resValue { font-size: 60px; font-weight: 700; color: #9AA7B6; }
+#resValue[ready="true"] { color: #12A07A; }
+#resUnit { font-size: 22px; color: #3C5A4E; padding-bottom: 8px; }
+#resNote { font-size: 13px; color: #5B6B64; }
+#resStatus { font-size: 16px; font-weight: 700; border-radius: 15px; padding: 4px 16px; }
+#resStatus[kind="ok"] { background: #CFEEDD; color: #12804E; }
+#resStatus[kind="warn"] { background: #FFE7C2; color: #A35B00; }
+#okBadge { background: #D6F0E5; color: #12804E; border-radius: 14px; padding: 4px 14px; font-size: 14px; font-weight: 700; }
+#hline { background: #BFDCCD; }
+#refLabel { font-size: 14px; color: #3C5A4E; }
+#refValue { font-size: 15px; font-weight: 700; color: #1F2D3D; }
+#infoPanel { background: #F1F6FD; border-radius: 12px; }
+#infoName { font-size: 12px; color: #8795A6; }
+#infoValue { font-size: 14px; font-weight: 600; color: #1F2D3D; }
+
+#smallBtn { background: #FFFFFF; border: 1px solid #D5E0EE; border-radius: 10px; font-size: 14px; color: #2B3A4A; }
+#smallBtn:pressed { background: #E6EEF8; }
+#smallBtn:disabled { color: #A9B5C3; border-color: #E3EAF3; }
+#smallDanger { background: #FFFFFF; border: 1px solid #E7A5A5; border-radius: 10px; font-size: 14px; color: #AD3131; }
+#smallDanger:pressed { background: #FFE3E3; }
+#smallDanger:disabled { color: #CDB5B5; border-color: #EBDADA; }
+#dashPrimary { background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #3B8CF5, stop:1 #1F66CE); color: #FFFFFF; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; }
+#dashPrimary:pressed { background: #1B58B4; }
+#dashPrimary:disabled { background: #B9CDE8; color: #F4F8FD; }
+
+#stepCard { background: #F7FAFE; border: 1px solid #E1E9F4; border-radius: 12px; }
+#stepCard[active="true"] { background: #FFFFFF; border: 2px solid #2F80ED; }
+#stepCard[status="error"] { border: 2px solid #E04848; }
+#stepNum { background: #9AA7B6; color: #FFFFFF; border-radius: 14px; font-size: 14px; font-weight: 700; }
+#stepNum[status="active"], #stepNum[status="error"] { background: #2F80ED; }
+#stepNum[status="done"] { background: #2F80ED; }
+#stepName { font-size: 16px; font-weight: 700; color: #1F2D3D; }
+#stepBadge { border-radius: 12px; font-size: 13px; font-weight: 700; padding: 0 12px; background: #E8EDF3; color: #6A7A8C; }
+#stepBadge[status="active"] { background: #DCEBFE; color: #1F5FB5; }
+#stepBadge[status="done"] { background: #D6F0E5; color: #12804E; }
+#stepBadge[status="error"] { background: #FFD9D9; color: #AD3131; }
+#stepTime { font-size: 20px; font-weight: 700; color: #1F2D3D; }
+#stepPct { font-size: 13px; font-weight: 700; color: #3C4B5C; }
+#stepDesc { font-size: 13px; color: #5E6E80; }
+#stepArrow { font-size: 26px; color: #8795A6; }
+QProgressBar#stepBar, QProgressBar#devBar { background: #DCE6F3; border: none; border-radius: 4px; }
+QProgressBar#stepBar::chunk { background: #2F80ED; border-radius: 4px; }
+QProgressBar#devBar::chunk { background: #2FAF87; border-radius: 4px; }
+
+#devName { font-size: 14px; color: #3C4B5C; }
+#devValue { font-size: 15px; font-weight: 700; color: #1F2D3D; }
+#devValue[kind="ok"] { color: #12A07A; }
+#devValue[kind="warn"] { color: #C47A00; }
+#devValue[kind="bad"] { color: #AD3131; }
+#devCount { font-size: 13px; color: #5E6E80; min-width: 70px; }
+#devModule { font-size: 12px; color: #8795A6; }
+
+#historyTable { background: transparent; border: none; font-size: 13px; gridline-color: transparent; }
+#historyTable QHeaderView::section { background: #EEF3FA; border: none; padding: 4px 6px; font-size: 12px; color: #5E6E80; }
+#historyTable::item { padding: 0 6px; border-bottom: 1px solid #EEF2F7; }
+#histStatus { border-radius: 11px; font-size: 12px; font-weight: 700; padding: 0 12px; background: #E8EDF3; color: #6A7A8C; }
+#histStatus[kind="ok"] { background: #D6F0E5; color: #12804E; }
+#histStatus[kind="warn"] { background: #FFE7C2; color: #A35B00; }
+
+/* ===== 세로 측정 화면 / 프로필 편집 / 검사 이력 ===== */
+#profilePage, #historyPage { background: #F2F6FB; }
+#profileTitle { font-size: 22px; font-weight: 700; color: #1F2D3D; }
+#profileScroll, #profileHost, #profileBody { background: transparent; border: none; }
+#dashScroll, #dashBody { background: transparent; border: none; }
+#profileCard { background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 12px; }
+#profileCard[selected="true"] { background: #EEF5FF; border: 2px solid #2F80ED; }
+#profileName { font-size: 16px; font-weight: 700; color: #1F2D3D; }
+#profileHint { font-size: 12px; color: #2F80ED; }
+#dashPage[compact="true"] #cardHeadTitle { font-size: 17px; }
+#dashPage[compact="true"] #stepName { font-size: 14px; }
+#dashPage[compact="true"] #resTitle { font-size: 17px; }
+#dashPage[compact="true"] #resValue { font-size: 44px; }
+#dashPage[compact="true"] #resUnit { font-size: 16px; padding-bottom: 6px; }
+#dashPage[compact="true"] #resStatus { font-size: 14px; padding: 3px 12px; }
+#dashPage[compact="true"] #stepTime { font-size: 15px; }
+#dashPage[compact="true"] #stepDesc { font-size: 12px; }
+#dashPage[compact="true"] #dashClock { font-size: 11px; }
+#dashPage[compact="true"] #refLabel { font-size: 12px; }
+#dashPage[compact="true"] #refValue { font-size: 13px; }
+#dashPage[compact="true"] #infoName { font-size: 11px; }
+#dashPage[compact="true"] #infoValue { font-size: 12px; }
+#dashPage[compact="true"] #modelTab { font-size: 15px; }
+#stepStartBtn { background: #FFFFFF; border: 1px solid #2F80ED; border-radius: 10px; font-size: 14px; font-weight: 700; color: #1F5FB5; }
+#stepStartBtn:pressed { background: #E3EFFF; }
+#stepStartBtn:disabled { background: #E8EDF3; border: 1px solid #E8EDF3; color: #8795A6; }
+#devLabel { font-size: 15px; font-weight: 600; color: #3C4B5C; }
+#dashPage[compact="true"] #devLabel { font-size: 12px; }
+#devLabel[kind="ok"] { color: #1FA37A; }
+#devLabel[kind="warn"] { color: #C47A00; }
+#devLabel[kind="bad"] { color: #C73838; }
+#historyLink { background: #EEF5FF; border: 1px solid #BFD8FA; border-radius: 14px; text-align: left; }
+#historyLink:pressed { background: #DCEBFE; }
+#historyLinkText { font-size: 16px; font-weight: 700; color: #1F2D3D; }
+#dashPage[compact="true"] #stepNum { border-radius: 13px; font-size: 13px; }
+#dashPage[compact="true"] #stepBadge { font-size: 12px; padding: 0 8px; }
+#dashPage[compact="true"] #modelTab { font-size: 14px; }

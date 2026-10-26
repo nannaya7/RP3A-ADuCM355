@@ -1,0 +1,38 @@
+# (백업) 2026-10-26 이전의 nformare.script: 시작할 때 화면 크기를 한 번만 읽어 로고를 배치한다. 새 스크립트(크기가 바뀌면 다시 배치)에
+# 문제가 있으면 이 파일의 내용을 deploy/plymouth/nformare/nformare.script 로 되돌리고 install_splash.sh 를 다시 실행한다.
+# (테마 폴더가 아니라 이 위치에 두어 설치 대상이 아니다.)
+
+Window.SetBackgroundTopColor(0.9137, 0.9451, 0.9294);
+Window.SetBackgroundBottomColor(0.9137, 0.9451, 0.9294);
+
+screen_w = Window.GetWidth();
+screen_h = Window.GetHeight();
+
+logo.image = Image("logo.png");
+
+img_w = logo.image.GetWidth();
+img_h = logo.image.GetHeight();
+
+if (img_h > img_w) {
+    if (screen_w < screen_h)
+        long_target = screen_w * 0.82;
+    else
+        long_target = screen_h * 0.82;
+    long_side = img_h;
+} else {
+    if (screen_w < screen_h)
+        long_target = screen_w * 0.82;
+    else
+        long_target = screen_w * 0.5;
+    long_side = img_w;
+}
+if (long_target > 640)
+    long_target = 640;
+
+scale = long_target / long_side;
+logo.image = logo.image.Scale(img_w * scale, img_h * scale);
+
+logo.sprite = Sprite(logo.image);
+logo.sprite.SetX(screen_w / 2 - logo.image.GetWidth() / 2);
+logo.sprite.SetY(screen_h / 2 - logo.image.GetHeight() / 2);
+logo.sprite.SetZ(10);

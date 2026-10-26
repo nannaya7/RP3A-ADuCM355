@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=nformare-debug
+Description=nformare boot splash diagnostic (shows the screen size and orientation Plymouth sees)
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/nformare-debug
+ScriptFile=/usr/share/plymouth/themes/nformare-debug/nformare-debug.script

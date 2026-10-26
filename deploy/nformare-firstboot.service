@@ -1,0 +1,13 @@
+[Unit]
+Description=nformare first boot setup (SSH host keys, device name)
+ConditionPathExists=!/var/lib/nformare-firstboot.done
+After=local-fs.target
+Before=ssh.service sshd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/nformare-firstboot.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,76 @@
+"""센서 선택: 내장 센서(UART) / 패치 센서(블루투스) / 꺼짐. 선택은 data/sensor.json 에 저장해 다음 실행에도 유지한다.
+
+- 내장 센서: 기존대로 UART(config.ini [uart] port) 로 ADuCM355 에 연결한다.
+- 패치 센서: 블루투스로 연결된 ADuCM355. 블루투스 직렬(SPP) 이 만든 직렬 포트(config.ini [sensor] patch_port,
+  기본 /dev/rfcomm0)를 같은 프로토콜로 연다. 두 센서는 동시에 켤 수 없다 (하나를 켜면 다른 하나는 자동으로 꺼진다).
+"""
+import json
+import logging
+import os
+from pathlib import Path
+from typing import Optional
+
+from .transport import SerialTransport, Transport, create_transport
+
+log = logging.getLogger(__name__)
+
+BUILTIN, PATCH, OFF = "builtin", "patch", "off"
+MODES = (BUILTIN, PATCH, OFF)
+
+
+def normalize(mode: Optional[str], default: str = BUILTIN) -> str:
+    mode = (mode or "").strip().lower()
+    return mode if mode in MODES else default
+
+
+def toggled(current: str, which: str, on: bool) -> str:
+    """토글 결과: which(patch/builtin)를 on 으로 켜면 그 센서만 켜지고(다른 센서는 자동 OFF), 끄면 모두 꺼진다."""
+    if on:
+        return which
+    return OFF if current == which else current
+
+
+class SensorStore:
+    """선택한 센서를 파일에 저장한다 (임시 파일에 쓰고 바꿔치기해서 도중에 꺼져도 깨지지 않는다)."""
+
+    def __init__(self, path: Path):
+        self.path = Path(path)
+
+    def load(self, default: str = BUILTIN) -> str:
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+            return normalize(data.get("mode"), default)
+        except FileNotFoundError:
+            return default
+        except (OSError, ValueError, AttributeError) as e:
+            log.warning("cannot read the sensor setting (%s): %s", self.path, e)
+            return default
+
+    def save(self, mode: str) -> bool:
+        tmp = self.path.with_suffix(".tmp")
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            tmp.write_text(json.dumps({"mode": normalize(mode, OFF)}), encoding="utf-8")
+            os.replace(tmp, self.path)
+            return True
+        except OSError as e:
+            log.warning("cannot save the sensor setting (%s): %s", self.path, e)
+            return False
+
+
+def make_transport(mode: str, cfg) -> Optional[Transport]:
+    """선택에 맞는 전송 장치. 꺼짐이면 None. 가상 모드(uart_mock)에서는 두 센서 모두 가상 펌웨어."""
+    if mode == BUILTIN:
+        return create_transport(cfg.uart_port, cfg.uart_baudrate, cfg.uart_mock)
+    if mode == PATCH:
+        if cfg.uart_mock:
+            return create_transport("", cfg.uart_baudrate, True)
+        return SerialTransport(cfg.patch_port, cfg.patch_baudrate)
+    return None
+
+
+def describe(mode: str, cfg) -> str:
+    """설정 화면에 보이는 연결 방법 설명."""
+    if mode == PATCH:
+        return f"블루투스 ({cfg.patch_port})"
+    return f"UART ({cfg.uart_port})"

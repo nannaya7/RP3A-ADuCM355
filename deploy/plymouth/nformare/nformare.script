@@ -1,0 +1,66 @@
+# nformare boot splash: logo centered on the app background colour (#E9F1ED).
+# Portrait screens use 82% of the width, landscape 50%, at most 640 px.
+# A tall logo image (rotated for a portrait-mounted landscape panel) is fitted along the short side instead.
+# The layout is recomputed whenever the window size changes: during boot Plymouth first draws on the firmware
+# framebuffer and later on the real display, and the size can differ between the two. A layout computed only once
+# at start left the logo off-centre on the second one.
+# Keep this file simple: it cannot be previewed on a PC, so it is a static logo only.
+
+Window.SetBackgroundTopColor(0.9137, 0.9451, 0.9294);
+Window.SetBackgroundBottomColor(0.9137, 0.9451, 0.9294);
+
+logo.src = Image("logo.png");
+logo.sprite = Sprite(logo.src);
+state.w = 0;
+state.h = 0;
+
+fun layout(screen_w, screen_h) {
+    img_w = logo.src.GetWidth();
+    img_h = logo.src.GetHeight();
+
+    if (img_h > img_w) {
+        # Logo was rotated 90/270 degrees for a panel whose native orientation is landscape (e.g. 800x480)
+        # but is mounted in portrait: its long side runs along the SHORT screen side. Fit it to 82% of that side.
+        if (screen_w < screen_h) {
+            long_target = screen_w * 0.82;
+        } else {
+            long_target = screen_h * 0.82;
+        }
+        long_side = img_h;
+    } else {
+        # Normal (wide) logo: portrait screens use 82% of the width, landscape 50%.
+        if (screen_w < screen_h) {
+            long_target = screen_w * 0.82;
+        } else {
+            long_target = screen_w * 0.5;
+        }
+        long_side = img_w;
+    }
+    if (long_target > 640) {
+        long_target = 640;
+    }
+
+    scale = long_target / long_side;
+    img = logo.src.Scale(img_w * scale, img_h * scale);
+    logo.sprite.SetImage(img);
+    logo.sprite.SetX(screen_w / 2 - img.GetWidth() / 2);
+    logo.sprite.SetY(screen_h / 2 - img.GetHeight() / 2);
+    logo.sprite.SetZ(10);
+}
+
+fun refresh() {
+    w = Window.GetWidth();
+    h = Window.GetHeight();
+    if (w != state.w) {
+        state.w = w;
+        state.h = h;
+        layout(w, h);
+    } else if (h != state.h) {
+        state.w = w;
+        state.h = h;
+        layout(w, h);
+    }
+}
+
+Plymouth.SetRefreshFunction(refresh);
+refresh();
