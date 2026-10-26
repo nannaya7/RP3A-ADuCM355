@@ -72,7 +72,7 @@ class AppWindow(QStackedWidget):
         self._link_error = ""
         self._link_up = False
         self._probe = None                                    # 패치 센서를 켜는 중이면 진행 정보
-        self.probe_timeout_s = 8.0                            # 포트 열기 + STATUS 응답을 기다리는 최대 시간
+        self.probe_timeout_s = 20.0                           # 포트 열기 + STATUS 응답을 기다리는 최대 시간
         self.worker = UartWorker(make_transport(self.sensor_mode, cfg))
         self.client = FirmwareClient(self.worker)
         root = Path(__file__).resolve().parent.parent

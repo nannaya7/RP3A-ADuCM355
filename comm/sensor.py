@@ -1,8 +1,8 @@
 """센서 선택: 내장 센서(UART) / 패치 센서(블루투스) / 꺼짐. 선택은 data/sensor.json 에 저장해 다음 실행에도 유지한다.
 
 - 내장 센서: 기존대로 UART(config.ini [uart] port) 로 ADuCM355 에 연결한다.
-- 패치 센서: 블루투스로 연결된 ADuCM355. 블루투스 직렬(SPP) 이 만든 직렬 포트(config.ini [sensor] patch_port,
-  기본 /dev/rfcomm0)를 같은 프로토콜로 연다. 두 센서는 동시에 켤 수 없다 (하나를 켜면 다른 하나는 자동으로 꺼진다).
+- 패치 센서: BLE(Nordic UART Service)로 연결된 ADuCM355. UART 를 그대로 흉내 내므로 패킷 처리는 유선과 같다
+  (config.ini [sensor] patch_name / patch_address). 두 센서는 동시에 켤 수 없다 (하나를 켜면 다른 하나는 자동으로 꺼진다).
 """
 import json
 import logging
@@ -10,7 +10,8 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from .transport import SerialTransport, Transport, create_transport
+from .ble_transport import BleNusTransport
+from .transport import Transport, create_transport
 
 log = logging.getLogger(__name__)
 
@@ -65,12 +66,12 @@ def make_transport(mode: str, cfg) -> Optional[Transport]:
     if mode == PATCH:
         if cfg.uart_mock:
             return create_transport("", cfg.uart_baudrate, True)
-        return SerialTransport(cfg.patch_port, cfg.patch_baudrate)
+        return BleNusTransport(cfg.patch_address, cfg.patch_name)
     return None
 
 
 def describe(mode: str, cfg) -> str:
     """설정 화면에 보이는 연결 방법 설명."""
     if mode == PATCH:
-        return f"블루투스 ({cfg.patch_port})"
+        return f"BLE ({cfg.patch_address or cfg.patch_name + '*'})"
     return f"UART ({cfg.uart_port})"

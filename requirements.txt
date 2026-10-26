@@ -2,6 +2,8 @@
 # Pi 에서는 pip 대신 apt 로 설치: sudo apt install python3-pyqt5 python3-serial
 PyQt5==5.15.11
 pyserial==3.5
+# 패치 센서(BLE NUS). Pi 는 apt 의 python3-bleak
+bleak
 # Troponin 계산(models/troponin.py)이 사용. Pi 는 apt 의 python3-numpy (버전은 deploy/pi_setup.sh 의 check 단계가 출력)
 numpy
 # 개발용(테스트): 원본 Troponin 코드와의 패리티 테스트가 pandas 를 쓴다. Pi 에는 필요 없다.

@@ -89,16 +89,20 @@ mock = false      ; true: 가상 백엔드 (PC 시험용. Windows 는 자동)
 - 전환하면 UART 워커가 이전 연결을 닫고 새 장치로 다시 연결한다 (`UartWorker.set_transport`). 측정 컨트롤러는 연결이 바뀐 것을 보고 모듈 확인(STATUS)을 다시 한다. 모니터링 화면에는 어느 경로로 오가든 같은 로그가 쌓인다.
 - 코드: `comm/sensor.py`(선택 규칙·저장·장치 생성), `ui/sensor_panel.py`(토글 카드), `comm/uart_worker.py`(`set_transport`), `app/app_window.py`(`_on_sensor_mode`). 시험: `tests/test_sensor.py` (12개).
 
-### 패치 센서의 블루투스 연결 — **가정 (확인 필요)**
-패치 센서의 블루투스 통신 방식(SPP 직렬인지 BLE UART 인지)이 아직 정해지지 않아, 지금은 **블루투스 직렬(SPP)이 만드는 직렬 포트**를 내장 센서와 **같은 프로토콜**로 여는 방식으로 만들었다.
+### 패치 센서의 블루투스 연결 — BLE (Nordic UART Service)
+패치 센서의 ADuCM355 는 **BLE Nordic NUS 로 UART 를 그대로 흉내** 낸다. 패킷 처리는 유선 UART 와 완전히 같고, 바이트를 주고받는 계층만 BLE 다 (`comm/ble_transport.py`, `bleak`).
 ```ini
 [sensor]
 default = builtin             ; builtin | patch | off  (처음 실행할 때만. 이후는 data/sensor.json)
-patch_port = /dev/rfcomm0     ; 패치 센서의 블루투스 직렬 포트
-patch_baudrate = 115200
+patch_name = nFor           ; 광고 이름이 이 글자로 시작하는 장치 (펌웨어 DEVICE_NAME 예: "nFor30-001", 버전마다 숫자가 다르다)
+patch_address =               ; 비우면 이름/NUS 서비스로 검색, 지정하면 그 주소로만 연결
 ```
-- 포트가 없으면 패치 센서 카드에 `열기 실패` 이유가 보이고 1초마다 다시 시도한다 (페어링/포트 연결 후 자동으로 붙는다).
-- 블루투스 장치 등록(페어링)은 `블루투스` 탭에서 하고, 그 장치를 직렬 포트로 연결하는 단계(`rfcomm` 등)는 **아직 앱이 하지 않는다**. 패치 센서가 BLE(GATT) 로 통신한다면 별도 연결 코드가 필요하다 → 통신 방식을 알려 주면 맞춘다.
+- 장치 찾기: 광고 이름이 `patch_name` 으로 시작하거나 NUS 서비스(6E400001-…)를 광고하는 장치. 주소를 적으면 그 주소만.
+- `nFor` 접두사는 **패치 센서 연결에만** 쓴다. 설정 > 블루투스 탭의 검색은 이름 제한 없이 모든 장치를 보여 준다(키보드·마우스 등 연결용, 필터는 사용자가 입력할 때만).
+- 쓰기는 RX 특성(6E400002)에 MTU 크기로 쪼개 보내고, 읽기는 TX 특성(6E400003)의 notify 를 모은다.
+- 패치 센서 ON: 검색 → 연결 → STATUS 확인까지 최대 약 20초(`probe_timeout_s`) 기다린다. 못 찾으면 이전 센서로 되돌리고 "먼저 센서를 연결해 주세요." 팝업.
+- 링크가 끊기면 워커가 다시 검색·연결을 시도한다. Pi 에는 `python3-bleak` 이 필요하다 (`pi_setup.sh` 가 설치).
+- **Pi 실기 미확인**: 검색 시간, 연결 시간, 패킷 쪼개짐/속도(101점 × 3센서 수신)를 실제 모듈로 확인해야 한다.
 
 ## 6. Pi 에서 확인할 것
 **먼저 실제 명령으로 점검 도구를 돌린다** (`tools/net_check.py`). 화면과 같은 `net/` 백엔드로 진짜 `nmcli`/`bluetoothctl` 를 실행해, 원본 출력과 앱이 해석한 결과를 나란히 보여 주고 형식이 가정과 다르면 `!!` 로 알린다.

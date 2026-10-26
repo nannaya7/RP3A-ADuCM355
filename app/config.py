@@ -24,8 +24,8 @@ class Config:
     reaction_timer_start: str = "auto"    # auto | manual
     auto_start_last: bool = False     # true: T2 를 사용자 수락 없이 자동 시작 (담당자 협의 후 결정)
     sensor_default: str = "builtin"   # 처음 실행할 때 켜 둘 센서: builtin(UART) | patch(블루투스) | off
-    patch_port: str = "/dev/rfcomm0"  # 패치 센서(블루투스 직렬) 포트
-    patch_baudrate: int = 115200
+    patch_name: str = "nFor"        # 패치 센서(BLE Nordic NUS) 광고 이름의 앞부분
+    patch_address: str = ""           # 지정하면 이 BLE 주소로만 연결 (비우면 이름/NUS 서비스로 검색)
     sweep_start_hz: float = 10.0
     sweep_stop_hz: float = 200000.0
     sweep_points: int = 101
@@ -74,8 +74,8 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
         uart_baudrate=cp.getint("uart", "baudrate", fallback=d.uart_baudrate),
         uart_mock=cp.getboolean("uart", "mock", fallback=d.uart_mock),
         sensor_default=cp.get("sensor", "default", fallback=d.sensor_default).strip().lower(),
-        patch_port=cp.get("sensor", "patch_port", fallback=d.patch_port).strip() or d.patch_port,
-        patch_baudrate=cp.getint("sensor", "patch_baudrate", fallback=d.patch_baudrate),
+        patch_name=cp.get("sensor", "patch_name", fallback=d.patch_name).strip(),
+        patch_address=cp.get("sensor", "patch_address", fallback=d.patch_address).strip(),
         reaction_wait_s=cp.getint("measure", "reaction_wait_s", fallback=d.reaction_wait_s),
         reaction_timer_start=cp.get("measure", "reaction_timer_start", fallback=d.reaction_timer_start).strip().lower(),
         auto_start_last=cp.getboolean("measure", "auto_start_last", fallback=d.auto_start_last),

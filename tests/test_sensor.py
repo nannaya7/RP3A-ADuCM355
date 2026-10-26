@@ -12,7 +12,7 @@ from app.app_window import AppWindow
 from app.config import Config
 from app.display import LANDSCAPE, PORTRAIT
 from comm.sensor import BUILTIN, OFF, PATCH, SensorStore, make_transport, normalize, toggled
-from comm.transport import SerialTransport
+from comm.ble_transport import BleNusTransport
 from comm.uart_worker import UartWorker
 from net import MockBluetooth, MockWifi
 from ui.settings_page import SettingsPage
@@ -43,9 +43,9 @@ def test_selection_is_saved_and_survives_corrupt_file(tmp_path):
 
 
 def test_transport_per_mode():
-    cfg = dataclasses.replace(Config(), uart_port="/dev/serial0", patch_port="/dev/rfcomm0")
+    cfg = dataclasses.replace(Config(), uart_port="/dev/serial0", patch_name="nFor", patch_address="")
     t = make_transport(PATCH, cfg)
-    assert isinstance(t, SerialTransport) and t.port == "/dev/rfcomm0"      # 패치 = 블루투스 직렬 포트
+    assert isinstance(t, BleNusTransport) and t.name == "ble:nFor*"       # 패치 = BLE NUS
     assert make_transport(OFF, cfg) is None
     mock = dataclasses.replace(cfg, uart_mock=True)
     assert make_transport(PATCH, mock) is not None and make_transport(BUILTIN, mock) is not None
@@ -157,9 +157,9 @@ def test_connection_text_follows_state():
     page = make_page(True)
     s = page.sensor
     s.set_mode(PATCH)
-    s.set_connection(False, "/dev/rfcomm0 열기 실패")
+    s.set_connection(False, "BLE 센서를 찾지 못함")
     assert "연결 안 됨" in s.patch.state.text() and s.builtin.state.text() == "꺼짐"
-    s.set_connection(True, "블루투스 (/dev/rfcomm0)")
+    s.set_connection(True, "BLE (nFor*)")
     assert s.patch.state.text().startswith("연결됨")
 
 
@@ -372,3 +372,24 @@ def test_panel_shows_module_check_state():
     assert "연결 안 됨" in s.builtin.state.text() and "응답하지 않음" in s.builtin.state.text()
     s.set_connection(True, "UART")
     assert s.builtin.state.text().startswith("연결됨")
+
+
+def test_ble_transport_read_write_without_radio():
+    import asyncio
+    t = BleNusTransport("", "nFor")
+    t._rx.put(b"AB")
+    t._rx.put(b"CD")
+    assert t.read() == b"ABCD" and t.read() == b""                # 알림 조각을 이어서 돌려준다
+    t._lost.set()
+    with pytest.raises(OSError):
+        t.read()                                                  # 링크가 끊기면 워커가 재연결하도록 오류
+    with pytest.raises(OSError):
+        t.write(b"x")
+    sent = []
+
+    class C:
+        async def write_gatt_char(self, uuid, data, response=True):
+            sent.append(bytes(data))
+    t._client, t._chunk = C(), 20
+    asyncio.run(t._write(bytes(45)))
+    assert [len(x) for x in sent] == [20, 20, 5]                  # MTU 크기로 쪼개 보낸다
