@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QBoxLayout, QFrame
 from app.net.tasks import TaskRunner
 
 from .sensor_panel import SensorPanel
+from .update_panel import UpdatePanel
 from .widgets import Field, RoleTabs
 
 ROLE_OBJ, ROLE_TITLE, ROLE_SUB, ROLE_BADGE, ROLE_BARS = (Qt.UserRole + i for i in range(5))
@@ -709,10 +710,10 @@ class SettingsPage(QWidget):
         top.addStretch(1)
         root.addLayout(top)
 
-        self.tabs = RoleTabs([("wifi", "Wi-Fi"), ("bt", "블루투스"), ("sensor", "센서")], height=46, font_px=15,
+        self.tabs = RoleTabs([("wifi", "Wi-Fi"), ("bt", "블루투스"), ("sensor", "센서"), ("info", "정보")], height=46, font_px=15,
                              track="#CFE3D9")
         if not portrait:
-            self.tabs.setFixedWidth(480)
+            self.tabs.setFixedWidth(640)
         self.tabs_row = QWidget()
         tr = QHBoxLayout(self.tabs_row)
         tr.setContentsMargins(0, 0, 0, 0)
@@ -725,9 +726,11 @@ class SettingsPage(QWidget):
         self.wifi = WifiPanel(wifi, self.runner, portrait)
         self.bt = BluetoothPanel(bluetooth, self.runner, portrait)
         self.sensor = SensorPanel(portrait)
+        self.info = UpdatePanel(portrait)
         self.stack.addWidget(self.wifi)
         self.stack.addWidget(self.bt)
         self.stack.addWidget(self.sensor)
+        self.stack.addWidget(self.info)
         root.addWidget(self.stack, 1)
         self.tabs.changed.connect(self._on_tab)
         self.sensorModeRequested = self.sensor.modeRequested        # 센서 선택 요청 (AppWindow 가 연결을 바꾼다)
@@ -736,7 +739,7 @@ class SettingsPage(QWidget):
         return self.stack.currentWidget()
 
     def _on_tab(self, key: str) -> None:
-        self.stack.setCurrentWidget({"wifi": self.wifi, "bt": self.bt, "sensor": self.sensor}[key])
+        self.stack.setCurrentWidget({"wifi": self.wifi, "bt": self.bt, "sensor": self.sensor, "info": self.info}[key])
         self.current_panel().open()
 
     def open(self) -> None:

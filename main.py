@@ -2,6 +2,13 @@ import argparse
 import logging
 import sys
 from dataclasses import replace
+from pathlib import Path
+
+try:                                    # 업데이트 직후 계속 죽으면 이전 버전으로 되돌린다 (다른 import 보다 먼저, 실패해도 무시)
+    from app.update.guard import on_startup as _update_guard
+    _update_guard(Path(__file__).resolve().parent)
+except Exception:
+    pass
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont

@@ -3,6 +3,8 @@
 PyQt5==5.15.11
 pyserial==3.5
 # 패치 센서(BLE NUS). Pi 는 apt 의 python3-bleak
+# 업데이트 서명(ed25519) 검증. Pi 는 apt 의 python3-cryptography
+cryptography
 bleak
 # Troponin 계산(app/models/troponin.py)이 사용. Pi 는 apt 의 python3-numpy (버전은 deploy/pi_setup.sh 의 check 단계가 출력)
 numpy

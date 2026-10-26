@@ -120,7 +120,7 @@ step_apt() {
   # 앱 필수: PyQt5(+svg 아이콘/체크 표시용 플러그인, wayland 플랫폼), pyserial, numpy(Troponin 계산)
   # 도구: picocom(시리얼 확인), wlr-randr(화면 정보)
   # 설정 화면: network-manager(nmcli, Wi-Fi), bluez(bluetoothctl, 블루투스), rfkill(차단 해제)
-  local pkgs=(python3-pyqt5 python3-pyqt5.qtsvg libqt5svg5 qtwayland5 python3-serial python3-numpy python3-bleak picocom wlr-randr
+  local pkgs=(python3-pyqt5 python3-pyqt5.qtsvg libqt5svg5 qtwayland5 python3-serial python3-numpy python3-bleak python3-cryptography picocom wlr-randr
               network-manager bluez rfkill)
   [ "$RUN_TESTS" -eq 1 ] && pkgs+=(python3-pytest)
   local failed=0 p

@@ -30,6 +30,13 @@ class GearButton(QAbstractButton):
         self.setFocusPolicy(Qt.NoFocus)               # 입력란의 포커스(터치 키보드)를 빼앗지 않는다
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setToolTip("설정")
+        self._badge = False
+
+    def set_badge(self, on: bool) -> None:
+        """작은 빨간 점 (새 업데이트 알림)."""
+        if on != self._badge:
+            self._badge = on
+            self.update()
 
     def paintEvent(self, _):
         p = QPainter(self)
@@ -42,3 +49,8 @@ class GearButton(QAbstractButton):
         p.setPen(Qt.NoPen)
         p.setBrush(QColor("#2B2B2B" if self.isDown() else "#424242"))
         p.drawPath(gear_path(w / 2, w / 2, w * 0.30))
+        if self._badge:
+            p.setBrush(QColor("#E5484D"))
+            p.setPen(QPen(QColor("#FFFFFF"), 1.5))
+            r = max(5.0, w * 0.13)
+            p.drawEllipse(QPointF(w - r - 3, r + 3), r, r)

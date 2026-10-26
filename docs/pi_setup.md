@@ -130,6 +130,7 @@ sudo reboot
 | `qtwayland5` | **Wayland(labwc) 데스크톱에서 Qt 앱이 뜨는 플랫폼 플러그인** (`QT_QPA_PLATFORM=wayland`) |
 | `python3-serial` | UART 통신 (pyserial 3.5) |
 | `python3-bleak` | 패치 센서 BLE(Nordic NUS) 연결 |
+| `python3-cryptography` | 업데이트 패키지 서명 검증 ([update.md](update.md)) |
 | `python3-numpy` | **Troponin 계산**(`models/troponin.py`). *이전 설치 목록에 없던 것을 추가* |
 | `picocom` | 시리얼 송수신 확인 |
 | `network-manager`, `bluez`, `rfkill` | **설정 화면**의 Wi-Fi(`nmcli`) / 블루투스(`bluetoothctl`) 관리. 사용자를 `bluetooth` 그룹에 추가한다 (다시 로그인 후 적용) |

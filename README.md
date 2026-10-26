@@ -41,6 +41,7 @@ Windows 에서는 `run.bat` 메뉴로도 실행할 수 있다. 설정은 `config
 | `app/net/` | Wi-Fi / 블루투스 (nmcli, bluetoothctl, mock) |
 | `app/auth/` | 로그인 인터페이스 (현재 스킵) |
 | `app/assets/` `app/fonts/` `app/icon/` | 이미지, 폰트, 장비 상태 아이콘 |
+| `app/update/` | 업데이트 확인·서명 검증·설치·되돌리기 ([docs/update.md](docs/update.md)) |
 | `deploy/` | Pi 설치·부팅 로고·업데이트 끄기·이미지 복제 스크립트 |
 | `tools/` | Pi 점검용(`uart_demo.py`, `net_check.py`)과 PC 에서만 쓰는 이미지·아이콘 생성 스크립트(`make_*.py`) |
 | `tests/` | pytest |
@@ -55,6 +56,7 @@ Windows 에서는 `run.bat` 메뉴로도 실행할 수 있다. 설정은 `config
 - 통신 프로토콜: [docs/uart_protocol.md](docs/uart_protocol.md)
 - 모델: [docs/model_troponin_eis.md](docs/model_troponin_eis.md)
 - 설정·네트워크·센서: [docs/settings_network.md](docs/settings_network.md)
+- 배포 패키지·업데이트: [docs/update.md](docs/update.md)
 - 작업 기록: `docs/worklog_*.md`
 
 ## Pi 에 올릴 때

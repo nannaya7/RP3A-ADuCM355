@@ -42,6 +42,10 @@ class Config:
     ref_high: Optional[float] = None
     method: str = "EIS"
     net_mock: bool = False            # true: Wi-Fi/블루투스를 가상 백엔드로 (PC 시험용. Windows 는 자동)
+    update_url: str = ""              # 업데이트 정보(latest.json) 주소. 비우면 업데이트 기능 끔
+    update_check_on_start: bool = True    # 시작 후 한 번 새 버전을 조용히 확인 (설치는 사용자가 버튼으로)
+    update_require_signature: bool = True # true: 서명이 맞는 패키지만 설치
+    update_token: str = ""            # 비공개 서버의 읽기 토큰 (선택)
     server_base_url: str = ""
 
 
@@ -94,5 +98,9 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
         ref_high=_opt_float(cp.get("result", "ref_high", fallback="")),
         method=cp.get("result", "method", fallback=d.method).strip() or d.method,
         net_mock=cp.getboolean("network", "mock", fallback=d.net_mock),
+        update_url=cp.get("update", "url", fallback=d.update_url).strip(),
+        update_check_on_start=cp.getboolean("update", "check_on_start", fallback=d.update_check_on_start),
+        update_require_signature=cp.getboolean("update", "require_signature", fallback=d.update_require_signature),
+        update_token=cp.get("update", "token", fallback=d.update_token).strip(),
         server_base_url=cp.get("server", "base_url", fallback=d.server_base_url).strip(),
     )

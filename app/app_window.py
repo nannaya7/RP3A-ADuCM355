@@ -19,6 +19,9 @@ from app.measure.profiles import ProfileStore
 from app.measure.store import SessionStore
 from app.net import create_bluetooth, create_wifi
 from app.ui.gear_button import GearButton
+from app.update import guard
+from app.update.controller import UpdateController, restart_process
+from app.version import VERSION
 from app.ui.dashboard_page import DashboardPage
 from app.ui.dashboard_portrait import PortraitDashboard
 from app.ui.history_page import HistoryPage
@@ -123,6 +126,24 @@ class AppWindow(QStackedWidget):
         self.gear.clicked.connect(self._open_settings)
         self._place_gear()
 
+        # 업데이트: 확인·설치는 설정 > 정보 에서 사용자가 버튼으로 한다. 새 버전이 있으면 톱니바퀴에 점이 뜬다.
+        self.updates = UpdateController(cfg, root, blocked=self._update_blocked_reason, restart=self._restart_app, parent=self)
+        self.settings.info.set_info(VERSION, cfg.update_url)
+        self.settings.info.checkRequested.connect(lambda: self.updates.check())
+        self.settings.info.installRequested.connect(self._confirm_install)
+        self.updates.stateChanged.connect(self.settings.info.set_state)
+        self.updates.availabilityChanged.connect(self.gear.set_badge)
+        self._update_root = root
+        self._start_timer = QTimer(self)                     # 시작 후 한 번 조용히 새 버전 확인
+        self._start_timer.setSingleShot(True)
+        self._start_timer.timeout.connect(lambda: self.updates.check(silent=True))
+        if cfg.update_check_on_start and self.updates.enabled:
+            self._start_timer.start(20000)
+        self._healthy_timer = QTimer(self)                   # 한동안 정상으로 떠 있으면 방금 한 업데이트를 확정
+        self._healthy_timer.setSingleShot(True)
+        self._healthy_timer.timeout.connect(lambda: guard.mark_healthy(self._update_root))
+        self._healthy_timer.start(30000)
+
         # 앱 내장 터치 키보드 (페이지 위에 겹쳐 표시)
         self.keyboard = VirtualKeyboard(self, key_height=profile.touch_min, compact=profile.is_portrait)
         self.keyboard.visibilityChanged.connect(self._on_keyboard)
@@ -155,14 +176,37 @@ class AppWindow(QStackedWidget):
                                reaction_timer_start=cfg.reaction_timer_start)
 
     # ---- 설정 > 센서 (패치 센서 = 블루투스 / 내장 센서 = UART, 동시에 하나만) ----
-    def _sensor_switch_blocked(self) -> str:
-        """센서를 바꿀 수 없는 이유 (바꿀 수 있으면 빈 문자열). 측정 중이거나 검사가 진행 중이면 다른 센서 값이 섞인다."""
+    def _test_in_progress(self) -> bool:
+        """측정 중이거나 검사가 진행 중(1단계 이상, 아직 끝나지 않음)인가."""
         v = self.controller.snapshot()
         busy = v.state in (State.CONFIGURING, State.MEASURING, State.STOPPING, State.COMPUTING)
-        in_test = v.stage_index > 0 and v.state not in (State.DONE, State.ERROR)
-        if busy or in_test:
+        return busy or (v.stage_index > 0 and v.state not in (State.DONE, State.ERROR))
+
+    def _sensor_switch_blocked(self) -> str:
+        """센서를 바꿀 수 없는 이유 (바꿀 수 있으면 빈 문자열). 측정 중이거나 검사가 진행 중이면 다른 센서 값이 섞인다."""
+        if self._test_in_progress():
             return "검사 중에는 센서를 바꿀 수 없습니다. 검사를 끝내거나 측정 화면에서 [처음부터]를 누른 뒤 바꿔 주세요."
         return ""
+
+    # ---- 업데이트 ----
+    def _update_blocked_reason(self) -> str:
+        if self._test_in_progress():
+            return "검사 중에는 업데이트할 수 없습니다. 검사를 끝낸 뒤에 해 주세요."
+        return ""
+
+    def _confirm_install(self) -> None:
+        m = self.updates.manifest
+        if m is None:
+            return
+        box = QMessageBox(QMessageBox.Question, "업데이트", f"{m.version} 을(를) 설치하고 앱을 다시 시작할까요?",
+                          QMessageBox.Yes | QMessageBox.No, self)
+        box.setDefaultButton(QMessageBox.No)
+        if box.exec_() == QMessageBox.Yes:
+            self.updates.install()
+
+    def _restart_app(self) -> None:
+        self.shutdown()
+        restart_process()
 
     def _on_sensor_mode(self, mode: str) -> None:
         mode = normalize(mode, OFF)
@@ -278,6 +322,7 @@ class AppWindow(QStackedWidget):
     def shutdown(self) -> None:
         """앱 종료 시: UART 스레드와 결과 파일을 정리한다."""
         self.worker.stop()
+        self.updates.wait(3000)
         self.settings.shutdown()
         if self.controller.store is not None:
             self.controller.store.close()
