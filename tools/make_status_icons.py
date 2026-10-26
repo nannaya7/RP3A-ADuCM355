@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-ICON_DIR = Path(__file__).resolve().parent.parent / "icon"
+ICON_DIR = Path(__file__).resolve().parent.parent / "app" / "icon"
 FILL_WEIGHT = 0.30      # 시험관 안 채움의 농도 (0~1). 윤곽선·물방울은 1.0
 
 

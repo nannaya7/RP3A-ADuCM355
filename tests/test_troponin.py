@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from models import troponin as T
+from app.models import troponin as T
 
 ROOT = Path(__file__).resolve().parent.parent
 ORIGINAL = ROOT / "refer" / "Troponin 정량 코드 및 사용방법" / "eis_concentration_predictor.py"

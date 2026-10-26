@@ -16,9 +16,9 @@ from typing import Callable, Dict, List, Optional
 
 from PyQt5.QtCore import QObject, QTimer, pyqtSignal
 
-from comm import protocol as p
-from comm.firmware_client import FirmwareClient
-from models.troponin import TroponinInputError, TroponinModel, TroponinResult, make_curve
+from app.comm import protocol as p
+from app.comm.firmware_client import FirmwareClient
+from app.models.troponin import TroponinInputError, TroponinModel, TroponinResult, make_curve
 
 from .stages import MeasureSettings, StageDef
 from .store import SessionStore

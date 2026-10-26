@@ -13,9 +13,9 @@ from PyQt5.QtCore import QTimer, Qt, pyqtSignal
 from PyQt5.QtWidgets import (QFrame, QHBoxLayout, QLabel, QMessageBox, QProgressBar, QPushButton, QScrollArea,
                              QScroller, QSizePolicy, QVBoxLayout, QWidget)
 
-from measure.controller import MeasureController, State, ViewState
-from measure.patient import PatientProfile
-from measure.profiles import ProfileStore
+from app.measure.controller import MeasureController, State, ViewState
+from app.measure.patient import PatientProfile
+from app.measure.profiles import ProfileStore
 
 from .dashboard_logic import (RunTracker, STEP_NAMES, DeviceView, ResultView, device_view, korean_datetime_2line,
                               ref_text, result_view, step_button, step_views)

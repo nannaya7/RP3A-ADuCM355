@@ -13,9 +13,9 @@ from PyQt5.QtGui import QDoubleValidator, QIntValidator
 from PyQt5.QtWidgets import (QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QProgressBar,
                              QPushButton, QSizePolicy, QVBoxLayout, QWidget)
 
-from measure.controller import MeasureController, State, ViewState, fmt_mmss
-from measure.history import classify, format_value, load_history
-from measure.patient import CHRONIC_DISEASES, SEXES, PatientProfile, missing_labels
+from app.measure.controller import MeasureController, State, ViewState, fmt_mmss
+from app.measure.history import classify, format_value, load_history
+from app.measure.patient import CHRONIC_DISEASES, SEXES, PatientProfile, missing_labels
 
 from .dashboard_logic import (MEASURING, STEP_NAMES, DeviceView, ResultView, RunTracker, device_view, korean_datetime,
                               ref_text, result_view, step_views)

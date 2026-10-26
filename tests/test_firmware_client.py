@@ -8,11 +8,11 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import pytest
 from PyQt5.QtCore import QCoreApplication
 
-import comm.uart_worker as uw
-from comm import protocol as p
-from comm.firmware_client import FirmwareClient
-from comm.mock_device import MockFirmware
-from comm.uart_worker import UartWorker
+import app.comm.uart_worker as uw
+from app.comm import protocol as p
+from app.comm.firmware_client import FirmwareClient
+from app.comm.mock_device import MockFirmware
+from app.comm.uart_worker import UartWorker
 
 app = QCoreApplication.instance() or QCoreApplication(sys.argv)
 

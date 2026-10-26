@@ -10,9 +10,9 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from app.app_window import AppWindow
 from app.config import Config
 from app.display import PORTRAIT
-from measure.patient import PatientProfile
-from measure.profiles import ProfileStore
-from ui.theme import load_fonts, load_stylesheet
+from app.measure.patient import PatientProfile
+from app.measure.profiles import ProfileStore
+from app.ui.theme import load_fonts, load_stylesheet
 
 app = QApplication.instance()
 

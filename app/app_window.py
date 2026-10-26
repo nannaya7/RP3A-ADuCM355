@@ -8,25 +8,25 @@ from PyQt5.QtWidgets import QApplication, QLayout, QMessageBox, QStackedWidget, 
 
 from pathlib import Path
 
-from auth.skip_auth import SkipAuth
-from comm.firmware_client import FirmwareClient
-from comm.traffic_log import TrafficLog
-from comm.sensor import BUILTIN, OFF, PATCH, SensorStore, describe, make_transport, normalize
-from comm.uart_worker import UartWorker
-from measure.controller import MeasureController, State
-from measure.stages import MeasureSettings, troponin_stages
-from measure.profiles import ProfileStore
-from measure.store import SessionStore
-from net import create_bluetooth, create_wifi
-from ui.gear_button import GearButton
-from ui.dashboard_page import DashboardPage
-from ui.dashboard_portrait import PortraitDashboard
-from ui.history_page import HistoryPage
-from ui.login_page import LoginPage
-from ui.monitor_page import MonitorPage
-from ui.profile_edit_page import ProfileEditPage
-from ui.settings_page import SettingsPage
-from ui.virtual_keyboard import VirtualKeyboard
+from app.auth.skip_auth import SkipAuth
+from app.comm.firmware_client import FirmwareClient
+from app.comm.traffic_log import TrafficLog
+from app.comm.sensor import BUILTIN, OFF, PATCH, SensorStore, describe, make_transport, normalize
+from app.comm.uart_worker import UartWorker
+from app.measure.controller import MeasureController, State
+from app.measure.stages import MeasureSettings, troponin_stages
+from app.measure.profiles import ProfileStore
+from app.measure.store import SessionStore
+from app.net import create_bluetooth, create_wifi
+from app.ui.gear_button import GearButton
+from app.ui.dashboard_page import DashboardPage
+from app.ui.dashboard_portrait import PortraitDashboard
+from app.ui.history_page import HistoryPage
+from app.ui.login_page import LoginPage
+from app.ui.monitor_page import MonitorPage
+from app.ui.profile_edit_page import ProfileEditPage
+from app.ui.settings_page import SettingsPage
+from app.ui.virtual_keyboard import VirtualKeyboard
 
 from .config import Config
 from .display import DisplayProfile

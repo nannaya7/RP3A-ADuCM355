@@ -4,7 +4,7 @@ from pathlib import Path
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from measure.history import load_history
+from app.measure.history import load_history
 
 from .dashboard_widgets import HistoryTable
 

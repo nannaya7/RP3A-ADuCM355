@@ -9,8 +9,8 @@ from PyQt5.QtGui import QDoubleValidator, QIntValidator
 from PyQt5.QtWidgets import (QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QScrollArea,
                              QScroller, QVBoxLayout, QWidget)
 
-from measure.patient import CHRONIC_DISEASES, SEXES, PatientProfile, missing_labels
-from measure.profiles import ProfileStore
+from app.measure.patient import CHRONIC_DISEASES, SEXES, PatientProfile, missing_labels
+from app.measure.profiles import ProfileStore
 
 from .dashboard_widgets import ChipSelect
 from .dashboard_page import SuffixEdit, _set_prop

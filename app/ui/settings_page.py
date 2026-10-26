@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QBoxLayout, QFrame
                              QProgressBar, QPushButton, QScroller, QSizePolicy, QStackedWidget, QStyle, QStyledItemDelegate,
                              QVBoxLayout, QWidget)
 
-from net.tasks import TaskRunner
+from app.net.tasks import TaskRunner
 
 from .sensor_panel import SensorPanel
 from .widgets import Field, RoleTabs
@@ -678,7 +678,7 @@ class BluetoothPanel(DevicePanel):
 
 
 def raise_unavailable(msg: str):
-    from net.errors import NetError
+    from app.net.errors import NetError
     raise NetError(msg)
 
 

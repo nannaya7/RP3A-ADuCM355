@@ -9,9 +9,9 @@ from PyQt5.QtWidgets import QApplication
 from app.app_window import AppWindow
 from app.config import Config
 from app.display import LANDSCAPE, PORTRAIT
-from comm.traffic_log import RX, SYS, TX, Entry, TrafficLog, format_entry
-from ui.monitor_page import MonitorPage, color_of
-from ui.theme import load_fonts, load_stylesheet
+from app.comm.traffic_log import RX, SYS, TX, Entry, TrafficLog, format_entry
+from app.ui.monitor_page import MonitorPage, color_of
+from app.ui.theme import load_fonts, load_stylesheet
 
 app = QApplication.instance()
 

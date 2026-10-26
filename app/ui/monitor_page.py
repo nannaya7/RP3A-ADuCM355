@@ -16,7 +16,7 @@ from PyQt5.QtGui import QColor, QFont, QFontDatabase, QTextCharFormat, QTextCurs
 from PyQt5.QtWidgets import (QCheckBox, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QScroller, QVBoxLayout,
                              QWidget)
 
-from comm.traffic_log import RX, SYS, TX, Entry, TrafficLog, format_entry
+from app.comm.traffic_log import RX, SYS, TX, Entry, TrafficLog, format_entry
 
 FLUSH_MS = 100
 MAX_BLOCKS = 4000

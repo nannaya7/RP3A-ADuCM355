@@ -217,7 +217,7 @@ def make_preview(hero: QImage, mock_path: Path, out: Path) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "assets" / "login-hero-portrait.png"))
+    ap.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "app" / "assets" / "login-hero-portrait.png"))
     ap.add_argument("--preview", help="시안 이미지 경로 (있으면 미리보기 PNG 도 저장)")
     ap.add_argument("--preview-out", default=None)
     a = ap.parse_args()

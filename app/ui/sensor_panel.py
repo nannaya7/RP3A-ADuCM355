@@ -7,7 +7,7 @@ from PyQt5.QtCore import QRectF, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtWidgets import QAbstractButton, QBoxLayout, QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
-from comm.sensor import BUILTIN, OFF, PATCH, toggled
+from app.comm.sensor import BUILTIN, OFF, PATCH, toggled
 
 
 class ToggleSwitch(QAbstractButton):

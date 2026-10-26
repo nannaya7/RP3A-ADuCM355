@@ -1,6 +1,6 @@
 import pytest
 
-from ui.hangul import HangulComposer
+from app.ui.hangul import HangulComposer
 
 
 def type_text(keys: str) -> str:

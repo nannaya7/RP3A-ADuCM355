@@ -11,12 +11,12 @@ from PyQt5.QtWidgets import QApplication
 from app.app_window import AppWindow
 from app.config import Config
 from app.display import LANDSCAPE, PORTRAIT
-from comm.sensor import BUILTIN, OFF, PATCH, SensorStore, make_transport, normalize, toggled
-from comm.ble_transport import BleNusTransport
-from comm.uart_worker import UartWorker
-from net import MockBluetooth, MockWifi
-from ui.settings_page import SettingsPage
-from ui.theme import load_fonts, load_stylesheet
+from app.comm.sensor import BUILTIN, OFF, PATCH, SensorStore, make_transport, normalize, toggled
+from app.comm.ble_transport import BleNusTransport
+from app.comm.uart_worker import UartWorker
+from app.net import MockBluetooth, MockWifi
+from app.ui.settings_page import SettingsPage
+from app.ui.theme import load_fonts, load_stylesheet
 
 app = QApplication.instance() or QApplication(sys.argv)
 load_fonts()
@@ -242,7 +242,7 @@ def test_patch_sensor_turns_on_when_the_module_answers_status(tmp_path, monkeypa
 
 def test_patch_sensor_probe_works_after_a_finished_test(tmp_path, monkeypatch):
     """검사가 끝난(DONE) 상태에서는 모듈 확인이 저절로 다시 돌지 않아 앱이 직접 다시 시작한다."""
-    from measure.controller import State
+    from app.measure.controller import State
     win = make_window(tmp_path, PORTRAIT)
     monkeypatch.setattr(win, "notify", lambda _t: None)
     try:
@@ -363,7 +363,7 @@ def test_saved_choice_is_used_on_next_start(tmp_path):
 
 
 def test_panel_shows_module_check_state():
-    from ui.sensor_panel import SensorPanel
+    from app.ui.sensor_panel import SensorPanel
     s = SensorPanel()
     s.set_mode(BUILTIN)
     s.set_connection(True, "UART", checking=True)

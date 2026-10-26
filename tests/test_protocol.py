@@ -1,6 +1,6 @@
 import pytest
 
-from comm import protocol as p
+from app.comm import protocol as p
 
 
 # ---- 레코드 파싱 -----------------------------------------------------------

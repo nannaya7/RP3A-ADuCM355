@@ -34,7 +34,9 @@ sudo reboot                                          # ④ 재부팅 (UART, 스�
 
 ## 3. 파일 올리기 (FileZilla)
 
-올릴 것: `main.py`, `config.ini`(처음 한 번만), `app/`, `ui/`, `comm/`, `measure/`, `models/`, `auth/`, `assets/`, `fonts/`, `tools/`, **`deploy/`**
+올릴 것: `main.py`, `config.ini`(처음 한 번만), **`app/`**(ui·comm·measure·models·net·auth·assets·fonts·icon 이 모두 안에 있다), `tools/`, **`deploy/`**
+
+> **폴더 구조가 바뀐 경우(V.0.10.005 이후)**: 예전 구조로 올렸던 Pi 에는 최상위에 `ui/ comm/ measure/ models/ net/ auth/ assets/ fonts/ icon/` 가 남아 있다. 새 `app/` 을 올린 뒤 이 옛 폴더들을 지운다 (`rm -r ~/PyNFor/{ui,comm,measure,models,net,auth,assets,fonts,icon}`). 남겨 두면 낡은 코드가 섞여 헷갈린다. `data/`, `results/`, `config.ini` 는 그대로 둔다.
 올리지 말 것: `refer/`, `tests/`(Pi에서 `--run-tests`를 쓰려면 올림), `docs/`, `results/`, `__pycache__/`
 - Pi의 `config.ini`는 **덮어쓰지 않는다** (Pi 전용 값이 들어 있다). 자동 선택을 쓰려면 `[display] profile = auto`로 직접 바꾼다.
 - 스크립트 파일은 **LF 줄바꿈**이어야 Pi에서 실행된다 (이 프로젝트의 파일은 이미 LF).
@@ -241,7 +243,7 @@ cat /boot/firmware/cmdline.txt               # 한 줄, quiet splash logo.nologo
 ### 주의
 - **가로/세로 이미지는 따로 만든다.** 패널 overlay(`config.txt`), 부팅 로고 방향(`--for landscape|portrait`/`--rotate`), 화면 회전이 장비 종류마다 달라서, 기준 Pi 도 종류별로 한 대씩 설정해 이미지를 만든다. 앱 코드와 `config.ini` 의 나머지는 같다.
 - `prepare_image.sh` 를 실행한 기준 Pi 는 SSH 키와 Wi-Fi 가 지워져 **원격 접속이 안 될 수 있다.** 다시 개발할 때는 이미지로 만든 뒤 그 카드로 부팅하거나, 이미지를 다시 구워 쓰고 수정이 끝나면 다시 `prepare_image.sh` 를 실행한다. **정리하기 전에 이미지를 따로 백업**해 두면 안전하다.
-- 앱을 고친 뒤에는 **이미지를 새로 만들어야** 새 장비에 반영된다 (이미 나간 장비는 FileZilla 로 `app/ ui/ …` 를 올려 갱신). 이미지에 날짜/앱 버전을 이름으로 남긴다.
+- 앱을 고친 뒤에는 **이미지를 새로 만들어야** 새 장비에 반영된다 (이미 나간 장비는 FileZilla 로 `app/` 을 올려 갱신). 이미지에 날짜/앱 버전을 이름으로 남긴다.
 - 같은 PC 에 복제 SD 카드를 두 개 동시에 꽂아 두지 않는다 (PARTUUID 가 같아 PC 가 헷갈릴 수 있다).
 - 검사 결과를 장비에서 PC 로 꺼낸 뒤에는 개인정보 관리 지침에 따라 보관/삭제한다 (이미지에는 들어가지 않는다).
 - **시험**: 처음에는 만든 이미지를 **다른 SD 카드 한 장에 구워 부팅**해 확인한다 — 앱이 뜨는가, 호스트 이름, SSH 접속(새 호스트 키), `results/`·`data/` 가 비어 있는가, Wi-Fi 설정이 비어 있는가, 부팅 로고 방향. (이 절차는 PC 에서 스크립트 동작만 시험했고 **실제 Pi 와 이미지 구워 보기는 아직 하지 않았다.**)

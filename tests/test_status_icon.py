@@ -3,8 +3,8 @@ import pytest
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QApplication
 
-import ui.dashboard_widgets as dw
-from ui.dashboard_widgets import ICON_DIR, ICON_FILES, StatusIcon, tinted_icon
+import app.ui.dashboard_widgets as dw
+from app.ui.dashboard_widgets import ICON_DIR, ICON_FILES, StatusIcon, tinted_icon
 
 
 @pytest.mark.parametrize("kind", ["power", "strip", "wifi"])

@@ -11,7 +11,7 @@ from app.app_window import AppWindow
 from app.config import load_config
 from app.display import pick_screen, select_profile
 from app.logsetup import fix_runtime_dir, install_qt_filter, level_from, setup_logging
-from ui.theme import load_fonts, load_stylesheet
+from app.ui.theme import load_fonts, load_stylesheet
 
 
 def main() -> int:

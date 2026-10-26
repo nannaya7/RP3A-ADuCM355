@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QApplication, QPushButton
 from app.app_window import AppWindow
 from app.config import Config, load_config
 from app.display import LANDSCAPE, PORTRAIT
-from ui.theme import load_fonts, load_stylesheet
+from app.ui.theme import load_fonts, load_stylesheet
 
 app = QApplication.instance()
 
@@ -127,7 +127,7 @@ def test_config_defaults_to_auto_and_reads_screen(tmp_path):
 
 
 def test_landscape_login_buttons_side_by_side():
-    from ui.login_page import LoginPage
+    from app.ui.login_page import LoginPage
     lg = LoginPage(show_skip=True, portrait=False)
     lg.resize(1280, 800)
     lg.show()

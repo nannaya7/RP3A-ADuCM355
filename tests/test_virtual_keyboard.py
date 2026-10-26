@@ -5,7 +5,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt5.QtWidgets import QApplication, QLineEdit, QWidget
 
-from ui.virtual_keyboard import BS, DONE, SHIFT, SPACE, SYM, VirtualKeyboard
+from app.ui.virtual_keyboard import BS, DONE, SHIFT, SPACE, SYM, VirtualKeyboard
 
 app = QApplication.instance() or QApplication(sys.argv)
 
@@ -66,7 +66,7 @@ def test_geometry_at_bottom():
 
 
 def test_hangul_typing_in_line_edit():
-    from ui.virtual_keyboard import LANG
+    from app.ui.virtual_keyboard import LANG
     _, edit, kb = make()
     kb.press(LANG)  # 한글 레이어
     for k in "ㅎㅏㄴㄱㅡㄹ":
@@ -81,7 +81,7 @@ def test_hangul_typing_in_line_edit():
 
 
 def test_hangul_shift_and_mixed_input():
-    from ui.virtual_keyboard import LANG
+    from app.ui.virtual_keyboard import LANG
     _, edit, kb = make()
     kb.press(LANG)
     kb.press(SHIFT)
@@ -96,7 +96,7 @@ def test_hangul_shift_and_mixed_input():
 
 
 def test_hangul_resets_when_cursor_moved():
-    from ui.virtual_keyboard import LANG
+    from app.ui.virtual_keyboard import LANG
     _, edit, kb = make()
     kb.press(LANG)
     for k in "ㅎㅏ":

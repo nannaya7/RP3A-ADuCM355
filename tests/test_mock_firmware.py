@@ -1,7 +1,7 @@
 import time
 
-from comm import protocol as p
-from comm.mock_device import BANNER, MockFirmware
+from app.comm import protocol as p
+from app.comm.mock_device import BANNER, MockFirmware
 
 
 def run(fw, *cmds, wait=0.0):

@@ -22,7 +22,7 @@ from PyQt5.QtCore import QPointF, QRectF, Qt
 from PyQt5.QtGui import QColor, QFont, QImage, QPainter, QTransform
 from PyQt5.QtWidgets import QApplication
 
-from ui.theme import ASSETS, load_fonts
+from app.ui.theme import ASSETS, load_fonts
 
 BG = QColor("#E9F1ED")          # 페이지 배경색 — nformare.script 의 배경색과 같아야 한다
 PAD = 24

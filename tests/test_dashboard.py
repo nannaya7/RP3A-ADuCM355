@@ -11,12 +11,12 @@ from PyQt5.QtWidgets import QApplication
 from app.app_window import AppWindow
 from app.config import Config
 from app.display import LANDSCAPE, PORTRAIT
-from measure.history import classify, format_value, load_history
-from measure.patient import PatientProfile
-from ui.dashboard_logic import DeviceView
-from ui.dashboard_page import DashboardPage, korean_datetime
-from ui.dashboard_portrait import PortraitDashboard
-from ui.theme import load_fonts, load_stylesheet
+from app.measure.history import classify, format_value, load_history
+from app.measure.patient import PatientProfile
+from app.ui.dashboard_logic import DeviceView
+from app.ui.dashboard_page import DashboardPage, korean_datetime
+from app.ui.dashboard_portrait import PortraitDashboard
+from app.ui.theme import load_fonts, load_stylesheet
 
 app = QApplication.instance()
 

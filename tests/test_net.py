@@ -1,11 +1,11 @@
 """net/ — nmcli / bluetoothctl 출력 해석, 백엔드 명령 구성, 가상 백엔드."""
 import pytest
 
-from net.bluetooth import (BluetoothctlBackend, MockBluetooth, friendly_error as bt_err, make_device, parse_devices,
+from app.net.bluetooth import (BluetoothctlBackend, MockBluetooth, friendly_error as bt_err, make_device, parse_devices,
                            parse_info)
-from net.errors import NetError
-from net.runner import CmdResult, clean
-from net.wifi import MockWifi, NmcliWifi, parse_saved, parse_wifi_list, split_terse
+from app.net.errors import NetError
+from app.net.runner import CmdResult, clean
+from app.net.wifi import MockWifi, NmcliWifi, parse_saved, parse_wifi_list, split_terse
 
 
 def test_split_terse_handles_escaped_colon():
@@ -191,7 +191,7 @@ def test_mock_bluetooth_flow():
 
 
 def _fast(monkeypatch):
-    import net.bluetooth as nb
+    import app.net.bluetooth as nb
     monkeypatch.setattr(nb.time, "sleep", lambda s: None)
 
 

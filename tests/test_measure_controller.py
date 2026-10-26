@@ -7,13 +7,13 @@ import numpy as np
 import pytest
 from PyQt5.QtCore import QCoreApplication
 
-import comm.uart_worker as uw
-from comm.firmware_client import FirmwareClient
-from comm.mock_device import MockFirmware
-from comm.uart_worker import UartWorker
-from measure.controller import MeasureController, State
-from measure.stages import MeasureSettings, troponin_stages
-from measure.store import SessionStore
+import app.comm.uart_worker as uw
+from app.comm.firmware_client import FirmwareClient
+from app.comm.mock_device import MockFirmware
+from app.comm.uart_worker import UartWorker
+from app.measure.controller import MeasureController, State
+from app.measure.stages import MeasureSettings, troponin_stages
+from app.measure.store import SessionStore
 
 app = QCoreApplication.instance() or QCoreApplication(sys.argv)
 
@@ -163,7 +163,7 @@ def test_c0_is_the_first_measurement_unless_disabled(source, anchor_source, kept
         assert res.details["T2_anchor_source"] == anchor_source and res.details["T2_c0_kept"] == kept
         assert any("c0" in w for w in res.warnings) == (source == "none")
         if source == "first":                       # 앵커는 첫 측정(센서 0·1·2)의 T2 형 값과 같다
-            from models.troponin import raw_t2_b, aggregate_t2_with_qc
+            from app.models.troponin import raw_t2_b, aggregate_t2_with_qc
             curves = r.ctrl._curves(0)
             z, _, _ = aggregate_t2_with_qc(curves, curves[0][0])
             assert res.details["T2_c0_anchor_ohm"] == pytest.approx(raw_t2_b(curves[0][0], z))

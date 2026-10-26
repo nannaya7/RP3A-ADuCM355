@@ -22,10 +22,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from PyQt5.QtCore import QCoreApplication, QTimer  # noqa: E402
 
 from app.config import load_config  # noqa: E402
-from comm import protocol as p  # noqa: E402
-from comm.firmware_client import FirmwareClient  # noqa: E402
-from comm.transport import create_transport  # noqa: E402
-from comm.uart_worker import UartWorker  # noqa: E402
+from app.comm import protocol as p  # noqa: E402
+from app.comm.firmware_client import FirmwareClient  # noqa: E402
+from app.comm.transport import create_transport  # noqa: E402
+from app.comm.uart_worker import UartWorker  # noqa: E402
 
 
 def main() -> int:

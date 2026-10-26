@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
-from measure.controller import State, ViewState, fmt_mmss
-from measure.history import classify, format_value
+from app.measure.controller import State, ViewState, fmt_mmss
+from app.measure.history import classify, format_value
 
 WEEKDAYS = "월화수목금토일"
 STEP_NAMES = ("시료준비", "혈액투입", "세척후 검증")

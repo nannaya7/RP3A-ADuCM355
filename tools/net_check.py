@@ -16,10 +16,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from net.bluetooth import BluetoothctlBackend, parse_devices, parse_info          # noqa: E402
-from net.errors import NetError                                                    # noqa: E402
-from net.runner import CmdResult, run                                              # noqa: E402
-from net.wifi import NmcliWifi, parse_saved, parse_wifi_list, split_terse          # noqa: E402
+from app.net.bluetooth import BluetoothctlBackend, parse_devices, parse_info          # noqa: E402
+from app.net.errors import NetError                                                    # noqa: E402
+from app.net.runner import CmdResult, run                                              # noqa: E402
+from app.net.wifi import NmcliWifi, parse_saved, parse_wifi_list, split_terse          # noqa: E402
 
 LOG = []          # (명령, rc, 출력) — --save 로 파일에 쓴다
 PROBLEMS = []

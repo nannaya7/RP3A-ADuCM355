@@ -18,7 +18,7 @@ from PyQt5.QtGui import QColor, QImage, QLinearGradient, QPainter
 from PyQt5.QtWidgets import QApplication
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "assets" / "login-bg.jpg"
+SRC = ROOT / "app" / "assets" / "login-bg.jpg"
 OUT_W = 960                      # 논리 480px @2x
 
 
@@ -63,7 +63,7 @@ def main() -> int:
     ap.add_argument("--mode", choices=("crop", "full"), default="crop")
     ap.add_argument("--crop-x", type=int, default=130, help="crop 모드에서 원본 x 시작점(px)")
     ap.add_argument("--fade", type=float, default=0.32, help="아래쪽 페이드 비율(0~1)")
-    ap.add_argument("--out", default=str(ROOT / "assets" / "login-hero-photo.png"))
+    ap.add_argument("--out", default=str(ROOT / "app" / "assets" / "login-hero-photo.png"))
     ap.add_argument("--preview")
     ap.add_argument("--preview-out")
     ap.add_argument("--anchor", choices=("top", "text"), default="top", help="미리보기에서 위쪽 정렬 / 문구 바로 위 정렬")

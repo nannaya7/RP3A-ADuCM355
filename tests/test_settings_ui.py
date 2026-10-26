@@ -9,9 +9,9 @@ from PyQt5.QtWidgets import QApplication
 from app.app_window import AppWindow
 from app.config import Config
 from app.display import LANDSCAPE, PORTRAIT
-from net import MockBluetooth, MockWifi
-from ui.settings_page import SettingsPage, bars_for_rssi, bars_for_signal
-from ui.theme import load_fonts, load_stylesheet
+from app.net import MockBluetooth, MockWifi
+from app.ui.settings_page import SettingsPage, bars_for_rssi, bars_for_signal
+from app.ui.theme import load_fonts, load_stylesheet
 
 app = QApplication.instance()
 
@@ -218,7 +218,7 @@ def test_bluetooth_tab_search_register_connect_remove():
     assert page.stack.currentWidget() is b and b.list.count() == 4              # 열 때 한 번 검색
     names = titles(b)
     assert names == ["JBL Speaker", "Nformare Printer", "Barcode Scanner", "이름 없는 장치"]   # RSSI -48, -55, -62, -80 순
-    from net.bluetooth import BtDevice
+    from app.net.bluetooth import BtDevice
     assert b.sort_key(BtDevice("AA:00", "X", True, False, True, None)) > b.sort_key(BtDevice("AA:01", "Y", False, False, False, -95))   # 신호 정보 없음은 맨 아래
 
     click_row(b, "Nformare Printer")                                          # 등록됨 / 연결 안 됨
@@ -284,7 +284,7 @@ def test_signal_bars():
     assert bars_for_rssi(None) == -1 and bars_for_rssi(-40) == 4 and bars_for_rssi(-95) == 1
 
 
-from ui.settings_page import ROLE_BADGE, ROLE_SUB, ROLE_TITLE as Qt_ROLE_TITLE  # noqa: E402  (테스트 가독성을 위해 아래에 둔다)
+from app.ui.settings_page import ROLE_BADGE, ROLE_SUB, ROLE_TITLE as Qt_ROLE_TITLE  # noqa: E402  (테스트 가독성을 위해 아래에 둔다)
 
 
 # ---------------- 필터 / 정렬 / 아래 여백 ----------------

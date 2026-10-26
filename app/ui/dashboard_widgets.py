@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QHeaderView
                              QPushButton, QScroller, QSizePolicy, QTableWidget, QTableWidgetItem, QToolButton,
                              QVBoxLayout, QWidget)
 
-from measure.history import HistoryItem, format_value
+from app.measure.history import HistoryItem, format_value
 
 BLUE, BLUE_DARK, GREEN = "#2F80ED", "#1E63C9", "#2FAF87"
 
