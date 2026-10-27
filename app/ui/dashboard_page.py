@@ -72,6 +72,7 @@ class SuffixEdit(QFrame):
 class DashboardPage(QWidget):
     backRequested = pyqtSignal()
     monitorRequested = pyqtSignal()
+    historyRequested = pyqtSignal()               # [검사이력] 탭
     assayRequested = pyqtSignal(str)             # troponin / ntprobnp (탭을 눌렀을 때)
 
     def __init__(self, cfg, results_dir: Optional[Path] = None):
@@ -107,17 +108,20 @@ class DashboardPage(QWidget):
         self.back_btn.clicked.connect(self.backRequested)
         self.tab_tro = QPushButton("Troponin", objectName="modelTab")
         self.tab_nt = QPushButton("NT-ProBNP", objectName="modelTab")
-        for b, active in ((self.tab_tro, True), (self.tab_nt, False)):
-            b.setFixedSize(220, 46)
+        self.tab_hist = QPushButton("검사이력", objectName="modelTab")      # 화면 전환(검사 항목이 아님): 눌러도 활성 표시는 바뀌지 않는다
+        for b, active in ((self.tab_tro, True), (self.tab_nt, False), (self.tab_hist, False)):
+            b.setFixedSize(220 if b is not self.tab_hist else 160, 46)
             b.setFocusPolicy(Qt.NoFocus)
             b.setProperty("active", active)
         self.tab_tro.clicked.connect(lambda: self.assayRequested.emit("troponin"))
         self.tab_nt.clicked.connect(lambda: self.assayRequested.emit("ntprobnp"))
+        self.tab_hist.clicked.connect(self.historyRequested)
         self.clock = QLabel("", objectName="dashClock")
         top.addWidget(self.back_btn)
         top.addSpacing(6)
         top.addWidget(self.tab_tro)
         top.addWidget(self.tab_nt)
+        top.addWidget(self.tab_hist)
         top.addStretch(1)
         top.addWidget(self.clock)
         top.addSpacing(64)                      # 우측 상단 설정 버튼 자리 (AppWindow 가 위에 얹는다)

@@ -347,7 +347,18 @@ def test_history_page_lists_saved_results(tmp_path):
         win.measure.history_btn.click()
         assert win.currentWidget() is win.history_page and not win.gear.isVisible()
         assert win.history_page.table.rowCount() == 2 and "2건" in win.history_page.count.text()
-        assert win.history_page.table.item(0, 0).text().startswith("2026. 10. 21")          # 최신 순
+        assert win.history_page.table.item(0, 0).text().startswith("10. 21")          # 최신 순
+        win.history_page.back_btn.click()
+        assert win.currentWidget() is win.measure
+    finally:
+        win.shutdown()
+
+
+def test_history_tab_opens_the_history_page(tmp_path):
+    win = make(tmp_path)
+    try:
+        win.measure.tab_hist.click()
+        assert win.currentWidget() is win.history_page
         win.history_page.back_btn.click()
         assert win.currentWidget() is win.measure
     finally:

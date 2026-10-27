@@ -1,6 +1,7 @@
 """설정 > 센서: 패치 센서(블루투스) / 내장 센서(UART) 토글. 동시에 하나만 켜진다."""
 import dataclasses
 import sys
+import threading
 import time
 
 import pytest
@@ -510,7 +511,7 @@ def test_app_refuses_to_switch_sensor_during_a_test(tmp_path):
 
 
 def test_saved_choice_is_used_on_next_start(tmp_path):
-    SensorStore(tmp_path / "sensor.json").save(PATCH)
+    SensorStore(tmp_path / "sensor.json").save(OFF)
     cfg = dataclasses.replace(Config(), uart_mock=True, net_mock=True)
     store_path = tmp_path / "sensor.json"
     import app.app_window as aw
@@ -521,7 +522,8 @@ def test_saved_choice_is_used_on_next_start(tmp_path):
     finally:
         aw.SensorStore = orig
     try:
-        assert win.sensor_mode == PATCH and win.settings.sensor.patch.switch.isChecked()
+        assert win.sensor_mode == OFF and not win.settings.sensor.patch.switch.isChecked()
+        assert not win.settings.sensor.builtin.switch.isChecked()
     finally:
         win.shutdown()
 
@@ -557,3 +559,80 @@ def test_ble_transport_read_write_without_radio():
     t._client, t._chunk = C(), 20
     asyncio.run(t._write(bytes(45)))
     assert [len(x) for x in sent] == [20, 20, 5]                  # MTU 크기로 쪼개 보낸다
+
+
+# ---------------- 앱 종료 시 센서 연결 해제 ----------------
+class _FakeTransport:
+    name = "fake"
+
+    def __init__(self, hold_open=False):
+        self.hold_open, self.opened, self.closed, self.cancelled = hold_open, False, False, False
+        self._release = threading.Event()
+
+    def open(self):
+        if self.hold_open:                                   # 연결하는 중 (cancel 로 풀린다)
+            self._release.wait(5)
+            if self.cancelled:
+                raise OSError("cancelled")
+        self.opened = True
+
+    def cancel(self):
+        self.cancelled = True
+        self._release.set()
+
+    def close(self):
+        self.closed = True
+
+    def read(self):
+        time.sleep(0.01)
+        return b""
+
+    def write(self, data):
+        pass
+
+
+def test_worker_stop_closes_a_connected_transport():
+    from app.comm.uart_worker import UartWorker
+    t = _FakeTransport()
+    w = UartWorker(t)
+    w.start()
+    wait(lambda: t.opened, 3000)
+    w.stop()
+    assert t.closed
+
+
+def test_worker_stop_cancels_a_connection_in_progress():
+    from app.comm.uart_worker import UartWorker
+    t = _FakeTransport(hold_open=True)
+    w = UartWorker(t)
+    w.start()
+    QTest.qWait(100)
+    start = time.monotonic()
+    w.stop()
+    assert t.cancelled and time.monotonic() - start < 3          # 연결이 끝나기를 기다리지 않는다
+    assert not t.opened
+
+
+def test_ble_transport_is_tracked_while_open_and_released_on_close():
+    from app.comm import ble_transport as B
+    t = B.BleNusTransport()
+    B._OPEN.add(t)
+    t.close()
+    assert t not in B._OPEN
+
+
+def test_patch_sensor_is_not_connected_automatically_after_restart(tmp_path, monkeypatch):
+    import app.app_window as aw
+    store = SensorStore(tmp_path / "sensor.json")
+    store.save(PATCH)                                          # 지난번에 패치 센서를 켜 둔 채 끝났다
+    monkeypatch.setattr(aw, "SensorStore", lambda path: store)
+    win = make_window(tmp_path, PORTRAIT)
+    try:
+        assert win.sensor_mode == OFF and win.worker.transport_name == ""
+        assert not win.settings.sensor.patch.switch.isChecked()
+        assert store.load() == PATCH                           # 저장된 값은 건드리지 않는다
+        win.settings.sensor.connect_btn.click()                # 사용자가 [연결] 을 누르면 연결한다
+        wait(lambda: win.sensor_mode == PATCH and win._probe is None, 6000)
+        assert win.settings.sensor.mode == PATCH
+    finally:
+        win.shutdown()

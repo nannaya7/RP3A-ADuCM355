@@ -340,3 +340,71 @@ def test_stop_and_reset_buttons_state(tmp_path):
         assert not d.stop_btn.isEnabled() and not d.reset_btn.isEnabled()
     finally:
         win.shutdown()
+
+
+def test_history_tab_opens_the_history_page_and_back_returns(tmp_path):
+    win = make(tmp_path)
+    try:
+        win.measure.tab_hist.click()
+        assert win.currentWidget() is win.history_page
+        win.history_page.back_btn.click()
+        assert win.currentWidget() is win.measure
+        assert win.controller.assay == "troponin"                   # 이력 탭은 검사 항목을 바꾸지 않는다
+    finally:
+        win.shutdown()
+
+
+# ---------------- 검사 이력 찾기 ----------------
+def _item(day, hour, title="Troponin", value=1.0, status="정상", patient="김철수"):
+    from datetime import datetime
+    from app.measure.history import HistoryItem
+    return HistoryItem(datetime(2026, 10, day, hour, 30), title, value, status, "", patient)
+
+
+def test_find_history_searches_names_dates_and_values():
+    from app.measure.history import find_history
+    items = [_item(25, 9, patient="김철수"), _item(26, 10, "NT-proBNP", 212.5, "주의", "이영희"),
+             _item(27, 11, "Troponin", None, "판정불가", "김철수")]
+    assert [i.patient for i in find_history(items, "이영희")] == ["이영희"]
+    assert len(find_history(items, "김철수")) == 2
+    assert len(find_history(items, "10월 26일")) == 1 and len(find_history(items, "2026-10-27")) == 1
+    assert len(find_history(items, "212")) == 1
+    assert len(find_history(items, "김철수 판정불가")) == 1            # 낱말은 모두 들어 있어야 한다
+    assert find_history(items, "없는사람") == []
+
+
+def test_find_history_filters_by_assay_and_status_and_sorts():
+    from app.measure.history import find_history
+    items = [_item(25, 9, value=5.0), _item(26, 10, "NT-proBNP", 212.5, "주의"), _item(27, 11, value=None, status="판정불가"),
+             _item(28, 12, value=9.0)]
+    assert [i.title for i in find_history(items, title="NT-proBNP")] == ["NT-proBNP"]
+    assert [i.status for i in find_history(items, status="주의")] == ["주의"]
+    assert [i.when.day for i in find_history(items)] == [28, 27, 26, 25]                     # 최신순이 기본
+    assert [i.when.day for i in find_history(items, sort="오래된순")] == [25, 26, 27, 28]
+    assert [i.when.day for i in find_history(items, sort="결과 높은순")] == [26, 28, 25, 27]   # 값 없는 기록은 맨 뒤
+    assert [i.when.day for i in find_history(items, sort="결과 낮은순")] == [25, 28, 26, 27]
+
+
+def test_history_page_search_filter_and_reset(tmp_path):
+    import json
+    from app.ui.history_page import HistoryPage
+    for n, (day, title, value, name) in enumerate([(25, "Troponin", 5.0, "김철수"), (26, "NT-proBNP", 212.5, "이영희"),
+                                                   (27, "Troponin", 9.0, "이영희")]):
+        d = tmp_path / f"2026102{day - 20}_000000_x{n}"
+        d.mkdir()
+        (d / "summary.json").write_text(json.dumps({
+            "finished_at": f"2026-10-{day}T09:00:00", "title": title, "value": value, "unit": "",
+            "patient": {"name": name}}), encoding="utf-8")
+    page = HistoryPage(tmp_path)
+    page.refresh()
+    assert page.table.rowCount() == 3 and "전체 3건" in page.count.text()
+    page.search.edit.setText("이영희")
+    assert page.table.rowCount() == 2 and "검색 결과 2건" in page.count.text()
+    page.chips[2][1].click()                                              # NT-proBNP
+    assert page.table.rowCount() == 1
+    page.sort_btn.click()
+    assert page.sort_btn.text() == "정렬: 오래된순"
+    page.reset_btn.click()
+    assert page.table.rowCount() == 3 and page.query == "" and page.sort_btn.text() == "정렬: 최신순"
+    page.search.edit.setText("없는사람")
+    assert page.table.rowCount() == 0 and "맞는 기록이 없습니다" in page.count.text()

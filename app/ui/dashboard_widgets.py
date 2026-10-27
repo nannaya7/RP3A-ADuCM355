@@ -265,8 +265,10 @@ class HistoryTable(QTableWidget):
     """최근 검사 이력: 날짜/시간, 검사 항목, 결과, 상태. 손가락으로 밀어서 스크롤."""
     HEADERS = ("날짜 / 시간", "검사 항목", "결과", "상태")
 
-    def __init__(self, parent=None):
-        super().__init__(0, 4, parent)
+    def __init__(self, parent=None, show_patient: bool = False):
+        self._patient_col = show_patient              # True 이면 두 번째에 "이름" 열을 더한다 (이력 화면)
+        self.HEADERS = ("날짜 / 시간", "이름", "검사 항목", "결과", "상태") if show_patient else HistoryTable.HEADERS
+        super().__init__(0, len(self.HEADERS), parent)
         self.setObjectName("historyTable")
         self.setHorizontalHeaderLabels(self.HEADERS)
         self.verticalHeader().hide()
@@ -279,10 +281,12 @@ class HistoryTable(QTableWidget):
         self.setFrameShape(QFrame.NoFrame)
         h = self.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.Stretch)
-        h.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        h.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        h.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        h.setHighlightSections(False)
+        for c in range(1, len(self.HEADERS) - 1):
+            h.setSectionResizeMode(c, QHeaderView.ResizeToContents)
+        last = len(self.HEADERS) - 1
+        h.setSectionResizeMode(last, QHeaderView.Fixed)          # 상태 표시("판정불가")가 잘리지 않을 폭
+        self.setColumnWidth(last, 82)
+        self.date_format = "%Y. %m. %d  %H:%M"                   # 좁은 화면에서는 이력 화면이 짧게 바꾼다        h.setHighlightSections(False)
         h.setMinimumSectionSize(60)
         h.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         QScroller.grabGesture(self.viewport(), QScroller.LeftMouseButtonGesture)
@@ -291,8 +295,9 @@ class HistoryTable(QTableWidget):
         self.setRowCount(len(items))
         for r, it in enumerate(items):
             self.setRowHeight(r, 34)
-            when = it.when.strftime("%Y. %m. %d  %H:%M")
-            cells = (when, it.title, format_value(it.value) + (f" {it.unit}" if it.unit and it.value is not None else ""))
+            when = it.when.strftime(self.date_format)
+            result = format_value(it.value) + (f" {it.unit}" if it.unit and it.value is not None else "")
+            cells = (when, it.patient or "—", it.title, result) if self._patient_col else (when, it.title, result)
             for c, text in enumerate(cells):
                 item = QTableWidgetItem(text)
                 item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
@@ -305,7 +310,7 @@ class HistoryTable(QTableWidget):
             hl = QHBoxLayout(holder)
             hl.setContentsMargins(4, 0, 4, 0)
             hl.addWidget(tag)
-            self.setCellWidget(r, 3, holder)
+            self.setCellWidget(r, len(self.HEADERS) - 1, holder)
 
 
 class SectionIcon(QWidget):

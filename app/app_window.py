@@ -77,6 +77,8 @@ class AppWindow(QStackedWidget):
         root = Path(__file__).resolve().parent.parent
         self.sensor_store = SensorStore(root / "data" / "sensor.json")      # 설정 > 센서 에서 고른 센서 (재시작해도 유지)
         self.sensor_mode = self.sensor_store.load(normalize(cfg.sensor_default))
+        if self.sensor_mode == PATCH:       # 패치 센서는 재시작해도 자동으로 연결하지 않는다 (설정 > 센서 에서 [연결] 을 눌러야 연결). 저장된 선택은 그대로 둔다
+            self.sensor_mode = OFF
         self._link_error = ""
         self._link_up = False
         self._probe = None                                    # 패치 센서를 켜는 중이면 진행 정보
@@ -97,11 +99,11 @@ class AppWindow(QStackedWidget):
                                    save_dir=results if results.is_absolute() else root / results)
         results_dir = results if results.is_absolute() else root / results
         self.profiles = ProfileStore(root / "data" / "profiles.json")     # 세로 화면의 프로필(가족 구성원) 목록
-        self.profile_edit = self.history_page = None
+        self.profile_edit = None
+        self.history_page = HistoryPage(results_dir)         # [검사이력] 탭 (가로·세로 공통)
         if profile.is_portrait:
             self.measure = PortraitDashboard(cfg, self.profiles, results_dir=results_dir)
             self.profile_edit = ProfileEditPage(self.profiles)
-            self.history_page = HistoryPage(results_dir)
         else:
             self.measure = DashboardPage(cfg, results_dir=results_dir)
         self.measure.bind(self.controller)
@@ -173,9 +175,9 @@ class AppWindow(QStackedWidget):
         self.settings.backRequested.connect(self._close_settings)
         self.measure.monitorRequested.connect(self._open_monitor)
         self.monitor.backRequested.connect(self._close_monitor)
+        self.measure.historyRequested.connect(self._open_history)
+        self.history_page.backRequested.connect(self._close_overlay)
         if self.profile_edit is not None:
-            self.measure.historyRequested.connect(self._open_history)
-            self.history_page.backRequested.connect(self._close_overlay)
             self.measure.profileEditRequested.connect(self._open_profile_edit)
             self.profile_edit.cancelled.connect(self._close_overlay)
             self.profile_edit.saved.connect(self._on_profile_saved)
@@ -402,7 +404,7 @@ class AppWindow(QStackedWidget):
 
     def shutdown(self) -> None:
         """앱 종료 시: UART 스레드와 결과 파일을 정리한다."""
-        self.worker.stop()
+        self.worker.stop()                                   # 연결돼 있으면 닫는다 (블루투스 센서는 연결 해제까지 기다린다)
         self.updates.wait(3000)
         self.settings.shutdown()
         if self.controller.store is not None:

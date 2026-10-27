@@ -44,9 +44,12 @@ class UartWorker(QObject):
         self._thread.started.connect(self._run)
         self._thread.start()
 
-    def stop(self, timeout_ms: int = 3000) -> None:
-        """루프를 멈추고 스레드를 정리한다 (GUI 스레드에서 호출)."""
+    def stop(self, timeout_ms: int = 8000) -> None:
+        """루프를 멈추고 스레드를 정리한다 (GUI 스레드에서 호출). 연결돼 있으면 닫고(블루투스는 연결 해제까지), 연결하는 중이면 중단한다."""
         self._stop.set()
+        cancel = getattr(self._transport, "cancel", None)
+        if callable(cancel):
+            cancel()
         self._wake.set()
         if self._thread is not None:
             self._thread.quit()
@@ -109,7 +112,7 @@ class UartWorker(QObject):
                         self.errorOccurred.emit(f"{t.name} 열기 실패: {e}")
                         self._sleep(RECONNECT_INTERVAL)
                     continue
-                if self._pending is not None:           # 여는 동안 장치가 바뀌었다
+                if self._pending is not None or self._stop.is_set():     # 여는 동안 장치가 바뀌었거나 앱이 끝나는 중이다
                     try:
                         t.close()
                     except OSError:

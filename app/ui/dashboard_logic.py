@@ -30,7 +30,7 @@ def korean_datetime_2line(now: datetime) -> str:
     """세로 화면 상단용: 날짜와 시각을 두 줄로"""
     ampm = "오전" if now.hour < 12 else "오후"
     h = now.hour % 12 or 12
-    return f"{now.year}년 {now.month}월 {now.day}일 ({WEEKDAYS[now.weekday()]})\n{ampm} {h:02d}:{now.minute:02d}"
+    return f"{now.month}월 {now.day}일 ({WEEKDAYS[now.weekday()]})\n{ampm} {h:02d}:{now.minute:02d}"
 
 
 # ---------------- 단계 ----------------

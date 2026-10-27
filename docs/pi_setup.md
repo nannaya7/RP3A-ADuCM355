@@ -132,6 +132,7 @@ sudo reboot
 | `python3-bleak` | 패치 센서 BLE(Nordic NUS) 연결 |
 | `python3-cryptography` | 업데이트 패키지 서명 검증 ([update.md](update.md)) |
 | `python3-numpy` | **Troponin 계산**(`models/troponin.py`). *이전 설치 목록에 없던 것을 추가* |
+| `python3-scipy` | **NT-proBNP 등가회로 피팅**(`models/ntprobnp.py`). `assay = ntprobnp` 일 때만 불러온다 |
 | `picocom` | 시리얼 송수신 확인 |
 | `network-manager`, `bluez`, `rfkill` | **설정 화면**의 Wi-Fi(`nmcli`) / 블루투스(`bluetoothctl`) 관리. 사용자를 `bluetooth` 그룹에 추가한다 (다시 로그인 후 적용) |
 | `wlr-randr` | 화면 이름/해상도/회전 확인 (`screen = DSI-1` 지정에 필요) |

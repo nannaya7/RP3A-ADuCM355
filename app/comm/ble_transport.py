@@ -6,10 +6,12 @@
 - bleak(asyncio)는 전용 스레드에서 돌리고, open/read/write/close 는 UartWorker 스레드에서 동기로 부른다.
 """
 import asyncio
+import atexit
 import logging
 import queue
 import threading
 import warnings
+import weakref
 from typing import List, NamedTuple, Optional
 
 log = logging.getLogger(__name__)
@@ -69,6 +71,19 @@ def scan_patch_sensors(name_prefix: str = "nFor", timeout: float = 5.0) -> List[
     return sorted(out, key=lambda f: (-(f.rssi if f.rssi is not None else -200), f.name.lower()))
 
 
+_OPEN: "weakref.WeakSet[BleNusTransport]" = weakref.WeakSet()       # 연결돼 있는 센서 (앱이 어떻게 끝나든 연결을 풀기 위해)
+
+
+@atexit.register
+def _disconnect_all() -> None:
+    """정상 종료 경로(UartWorker.stop)를 못 거치고 끝날 때의 안전망: 열려 있는 BLE 센서의 연결을 푼다."""
+    for t in list(_OPEN):
+        try:
+            t.close()
+        except Exception:
+            pass
+
+
 def _why(e: BaseException) -> str:
     """오류 문구. 메시지가 비어 있는 예외(TimeoutError 등)도 종류가 보이게 한다."""
     text = str(e).strip()
@@ -99,6 +114,7 @@ class BleNusTransport:
         try:
             self._open_fut = asyncio.run_coroutine_threadsafe(self._connect(), self._loop)
             self._open_fut.result(self.scan_timeout + self.connect_timeout + 2.0)
+            _OPEN.add(self)
         except Exception as e:
             self.close()
             log.info("BLE: 열기 실패: %s", _why(e))
@@ -114,6 +130,7 @@ class BleNusTransport:
             fut.cancel()
 
     def close(self) -> None:
+        _OPEN.discard(self)
         loop, self._loop = self._loop, None
         client, self._client = self._client, None
         while not self._rx.empty():

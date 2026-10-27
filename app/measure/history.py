@@ -19,6 +19,7 @@ class HistoryItem:
     value: Optional[float]       # QC 불합격이면 None
     status: str                  # 정상 | 주의 | 판정불가 | "" (기준이 없으면 빈 문자열)
     unit: str = ""
+    patient: str = ""            # 검사받은 사람 이름 (검색용). 없으면 빈 문자열
 
 
 def classify(value: Optional[float], ref_low: Optional[float], ref_high: Optional[float]) -> str:
@@ -56,9 +57,41 @@ def load_history(results_dir, limit: int = 20) -> List[HistoryItem]:
             when = datetime.fromisoformat(s["finished_at"])
             value = s.get("value")
             out.append(HistoryItem(when, s.get("title", "Troponin"), value,
-                                   classify(value, s.get("ref_low"), s.get("ref_high")), s.get("unit", "") or ""))
+                                   classify(value, s.get("ref_low"), s.get("ref_high")), s.get("unit", "") or "",
+                                   str((s.get("patient") or {}).get("name", "") or "").strip()))
         except (OSError, ValueError, KeyError, TypeError) as e:
             log.warning("cannot read the history file (%s): %s", f, e)
         if len(out) >= limit:
             break
     return out
+
+
+# ---- 찾기: 검색 / 필터 / 정렬 (화면 없이 시험할 수 있게 여기에 둔다) ----
+SORTS = ("최신순", "오래된순", "결과 높은순", "결과 낮은순")
+STATUSES = ("전체", "정상", "주의", "판정불가")
+
+
+def _haystack(it: HistoryItem) -> str:
+    """검색 대상 문자열: 이름, 검사 항목, 상태, 결과값, 날짜(여러 표기)."""
+    w = it.when
+    return " ".join([it.patient, it.title, it.status, format_value(it.value), it.unit,
+                     w.strftime("%Y-%m-%d %H:%M"), w.strftime("%Y. %m. %d"), f"{w.year}년 {w.month}월 {w.day}일",
+                     f"{w.month}월 {w.day}일", f"{w.month}/{w.day}"]).lower()
+
+
+def find_history(items: List[HistoryItem], query: str = "", title: str = "", status: str = "",
+                 sort: str = "최신순") -> List[HistoryItem]:
+    """query: 공백으로 나눈 낱말이 모두 들어 있는 기록 / title: 검사 항목(빈 문자열 = 전체) / status: 정상·주의·판정불가(빈 = 전체).
+    정렬: 결과순은 값이 없는(QC 불합격) 기록을 맨 뒤로 보낸다."""
+    words = query.lower().split()
+    out = [it for it in items
+           if (not title or it.title.lower() == title.lower())
+           and (not status or it.status == status)
+           and all(w in _haystack(it) for w in words)]
+    if sort == "오래된순":
+        return sorted(out, key=lambda it: it.when)
+    if sort in ("결과 높은순", "결과 낮은순"):
+        has = [it for it in out if it.value is not None]
+        none = sorted((it for it in out if it.value is None), key=lambda it: it.when, reverse=True)
+        return sorted(has, key=lambda it: it.value, reverse=(sort == "결과 높은순")) + none
+    return sorted(out, key=lambda it: it.when, reverse=True)
