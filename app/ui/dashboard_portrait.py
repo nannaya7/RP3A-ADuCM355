@@ -103,6 +103,7 @@ class PortStepRow(QFrame):
 class PortraitDashboard(QWidget):
     backRequested = pyqtSignal()
     monitorRequested = pyqtSignal()
+    assayRequested = pyqtSignal(str)             # troponin / ntprobnp (탭을 눌렀을 때)
     historyRequested = pyqtSignal()
     profileEditRequested = pyqtSignal(str)       # 프로필 id, "" = 새 프로필
 
@@ -137,7 +138,8 @@ class PortraitDashboard(QWidget):
             b.setFixedSize(98, 38)
             b.setFocusPolicy(Qt.NoFocus)
             b.setProperty("active", active)
-        self.tab_nt.clicked.connect(lambda: self._flash("NT-ProBNP 모델은 준비 중입니다.", "info"))
+        self.tab_tro.clicked.connect(lambda: self.assayRequested.emit("troponin"))
+        self.tab_nt.clicked.connect(lambda: self.assayRequested.emit("ntprobnp"))
         self.clock = QLabel("", objectName="dashClock")
         self.clock.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         top.addWidget(self.back_btn)
@@ -431,6 +433,21 @@ class PortraitDashboard(QWidget):
         self.banner.setVisible(bool(text))
         self.banner.setText(text)
         _set_prop(self.banner, "level", level)
+
+    def set_assay(self, key: str, cfg) -> None:
+        """검사 항목(모델)을 바꿨을 때 탭과 결과 카드의 제목·단위·참고 범위를 맞춘다. 컨트롤러 전환은 AppWindow 가 먼저 한다."""
+        self._cfg = cfg
+        _set_prop(self.tab_tro, "active", key == "troponin")
+        _set_prop(self.tab_nt, "active", key == "ntprobnp")
+        self.res_title.setText(cfg.result_title)
+        self.res_unit.setText(cfg.result_unit)
+        self.res_unit.setVisible(bool(cfg.result_unit))
+        self.res_ref.setText(ref_text(cfg))
+        if self._ctrl is not None:
+            self.render(self._ctrl.snapshot())
+
+    def assay_blocked(self, text: str) -> None:
+        self._flash(text, "warn")
 
     # ================= 컨트롤러 연결 / 그리기 =================
     def bind(self, ctrl: MeasureController) -> None:

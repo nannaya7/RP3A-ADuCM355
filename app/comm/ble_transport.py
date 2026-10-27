@@ -120,11 +120,13 @@ class BleNusTransport:
             self._rx.get_nowait()
         if loop is None or client is None:
             return
+        lost = self._lost.is_set()                        # 센서가 먼저 끊은 경우: 해제할 연결이 이미 없다
         try:
             asyncio.run_coroutine_threadsafe(client.disconnect(), loop).result(5.0)
             log.info("BLE: 연결 해제됨")
         except Exception as e:
-            log.warning("BLE: 연결 해제 실패: %s", _why(e))
+            # 이미 끊긴 연결을 정리할 때 BlueZ(D-Bus) 쪽이 EOFError 등을 내는 것은 정상이다 → 경고로 올리지 않는다
+            (log.debug if lost or isinstance(e, EOFError) else log.warning)("BLE: 연결 해제 실패: %s", _why(e))
 
     def read(self) -> bytes:
         try:

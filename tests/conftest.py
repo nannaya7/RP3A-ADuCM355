@@ -24,3 +24,10 @@ def _close_leftover_windows():
         w.deleteLater()
     QApplication.sendPostedEvents(None, 0)                  # deleteLater 처리 (DeferredDelete)
     QApplication.processEvents()
+
+
+@pytest.fixture(autouse=True)
+def _isolated_assay_file(tmp_path, monkeypatch):
+    """창이 검사 항목 선택을 실제 data/assay.json 에 쓰거나 읽지 않게 한다."""
+    import app.app_window as aw
+    monkeypatch.setattr(aw, "_assay_path", lambda root: tmp_path / "assay.json")

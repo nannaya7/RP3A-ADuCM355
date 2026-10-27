@@ -291,13 +291,31 @@ def test_step_cards_follow_states(tmp_path):
         win.shutdown()
 
 
-def test_nt_probnp_tab_is_not_ready_yet(tmp_path):
+def test_nt_probnp_tab_switches_the_model_and_the_result_card(tmp_path):
     win = make(tmp_path)
     try:
         d = win.measure
+        assert win.controller.assay == "troponin"
         d.tab_nt.click()
-        assert d.banner.isVisible() and "준비 중" in d.banner.text()
-        assert d.tab_tro.property("active") is True and d.tab_nt.property("active") is False
+        assert win.controller.assay == "ntprobnp"
+        assert d.tab_nt.property("active") is True and d.tab_tro.property("active") is False
+        assert d.res_title.text() == "NT-proBNP" and d.res_unit.text() == "pg/mL"
+        assert win.controller.meta["title"] == "NT-proBNP"
+        d.tab_tro.click()
+        assert win.controller.assay == "troponin" and d.res_title.text() == win._base_cfg.result_title
+    finally:
+        win.shutdown()
+
+
+def test_assay_choice_is_refused_midway_and_remembered(tmp_path):
+    win = make(tmp_path)
+    try:
+        win.controller._done[0] = {0: []}                       # 1단계를 끝낸 상태
+        win.measure.tab_nt.click()
+        assert win.controller.assay == "troponin" and "바꿀 수 없습니다" in win.measure.banner.text()
+        win.controller._done.clear()
+        win.measure.tab_nt.click()
+        assert win._load_assay() == "ntprobnp"                  # 파일에 저장돼 다음 실행에도 유지
     finally:
         win.shutdown()
 

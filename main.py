@@ -11,7 +11,7 @@ try:                                    # 업데이트 직후 계속 죽으면 �
 except Exception:
     pass
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QApplication
 
@@ -83,6 +83,13 @@ def main() -> int:
     log.info("screen %s size=%s available=%s", screen.name(), screen.size(), screen.availableGeometry())
     log.info("window fullscreen=%s size=%s pos=%s bottom_margin=%s", cfg.fullscreen, win.size(), win.pos(),
              win.contentsMargins().bottom())
+    # 터미널의 Ctrl+C 로 깨끗이 끝낸다 (그대로 두면 Qt 슬롯 안에서 KeyboardInterrupt 가 나 "Qt fatal" 로 비정상 종료한다).
+    # 파이썬 시그널 처리기는 이벤트 루프가 파이썬 코드를 실행할 때만 돌므로 타이머로 주기적으로 깨운다.
+    import signal
+    signal.signal(signal.SIGINT, lambda *_: app.quit())
+    wake = QTimer()
+    wake.start(300)
+    wake.timeout.connect(lambda: None)
     return app.exec_()
 
 

@@ -177,6 +177,18 @@ class MeasureController(QObject):
         self._reset_session()
         self.begin()
 
+    def set_assay(self, key: str, meta: dict) -> bool:
+        """계산 모델(검사 항목)을 바꾼다. 측정 중이거나 일부 단계가 끝난 상태에서는 거절한다 (False)."""
+        if key == self.assay:
+            return True
+        busy = (State.CONFIGURING, State.MEASURING, State.STOPPING, State.COMPUTING)
+        if self._state in busy or (self._done and self._state != State.DONE):
+            return False
+        self.assay, self._model, self.meta = key, None, dict(meta)
+        if self._state == State.DONE:
+            self.restart()
+        return True
+
     def retry(self) -> None:
         if self._state != State.ERROR:
             return

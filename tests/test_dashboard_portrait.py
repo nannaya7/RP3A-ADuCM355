@@ -179,7 +179,7 @@ def test_tab_nt_and_buttons(tmp_path):
     try:
         d = win.measure
         d.tab_nt.click()
-        assert d.banner.isVisible() and "준비 중" in d.banner.text()
+        assert win.controller.assay == "ntprobnp" and d.tab_nt.property("active") is True
         d.monitor_btn.click()
         assert win.currentWidget() is win.monitor
         win.monitor.back_btn.click()

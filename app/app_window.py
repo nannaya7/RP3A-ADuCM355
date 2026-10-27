@@ -39,6 +39,10 @@ from .state import Session
 log = logging.getLogger(__name__)
 
 
+def _assay_path(root: Path) -> Path:
+    return root / "data" / "assay.json"
+
+
 # 우측 상단 설정 버튼: (크기, 오른쪽 여백, 위 여백). 측정 화면의 '뒤로' 버튼과 세로 중심이 같도록 잡았다.
 GEAR_PORTRAIT = (44, 12, 12)
 GEAR_LANDSCAPE = (44, 24, 12)
@@ -85,7 +89,9 @@ class AppWindow(QStackedWidget):
         self.controller = MeasureController(
             self.client, self._measure_settings(cfg), troponin_stages(cfg.reaction_wait_s, cfg.auto_start_last),
             store=SessionStore(results if results.is_absolute() else root / results))
-        self.controller.assay = cfg.assay if cfg.assay in ("troponin", "ntprobnp") else "troponin"
+        self._assay_file = _assay_path(root)      # 탭에서 고른 검사 항목 (재시작해도 유지)
+        self._base_cfg = cfg
+        self.controller.assay = self._load_assay()
         self.traffic = TrafficLog(self.worker)                  # 앱이 켜져 있는 동안 UART 송수신을 계속 기록한다
         self.monitor = MonitorPage(self.traffic, portrait=profile.is_portrait,
                                    save_dir=results if results.is_absolute() else root / results)
@@ -161,6 +167,8 @@ class AppWindow(QStackedWidget):
 
         self.login.skipRequested.connect(self._on_skip)
         self.login.loginRequested.connect(self._on_login_requested)
+        self.measure.assayRequested.connect(self._on_assay)
+        self._apply_assay(self.controller.assay)
         self.measure.backRequested.connect(self._on_back)
         self.settings.backRequested.connect(self._close_settings)
         self.measure.monitorRequested.connect(self._open_monitor)
@@ -463,6 +471,45 @@ class AppWindow(QStackedWidget):
             page = self.currentWidget()
             color = BG_BLUE if page is not None and page.objectName() in BLUE_PAGES else BG_DEFAULT
             QPainter(self).fillRect(0, self.height() - self._bottom_safe, self.width(), self._bottom_safe, color)
+
+    # ---- 검사 항목(모델) 선택: Troponin / NT-proBNP ----
+    def _load_assay(self) -> str:
+        import json
+        try:
+            key = json.loads(self._assay_file.read_text(encoding="utf-8")).get("assay")
+        except (OSError, ValueError, AttributeError):
+            key = None
+        key = key or self._base_cfg.assay
+        return key if key in ("troponin", "ntprobnp") else "troponin"
+
+    def _assay_cfg(self, key: str):
+        """검사 항목에 맞는 결과 표시 설정. NT-proBNP 는 단위 pg/mL, 참고 범위 없음 (확정 전)."""
+        if key == "ntprobnp":
+            return dataclasses.replace(self._base_cfg, result_title="NT-proBNP", result_unit="pg/mL",
+                                       ref_low=None, ref_high=None)
+        return self._base_cfg
+
+    def _apply_assay(self, key: str) -> None:
+        cfg = self._assay_cfg(key)
+        self.controller.meta = {"title": cfg.result_title, "unit": cfg.result_unit,
+                                "ref_low": cfg.ref_low, "ref_high": cfg.ref_high}
+        self.measure.set_assay(key, cfg)
+
+    def _on_assay(self, key: str) -> None:
+        if key == self.controller.assay:
+            return
+        cfg = self._assay_cfg(key)
+        meta = {"title": cfg.result_title, "unit": cfg.result_unit, "ref_low": cfg.ref_low, "ref_high": cfg.ref_high}
+        if not self.controller.set_assay(key, meta):
+            self.measure.assay_blocked("측정 중이거나 일부 단계가 끝난 상태에서는 검사 항목을 바꿀 수 없습니다. 처음부터 다시 시작해 주세요.")
+            return
+        self._apply_assay(key)
+        try:
+            import json
+            self._assay_file.parent.mkdir(parents=True, exist_ok=True)
+            self._assay_file.write_text(json.dumps({"assay": key}), encoding="utf-8")
+        except OSError as e:
+            log.warning("cannot save the assay choice: %s", e)
 
     def closeEvent(self, e) -> None:
         for t in (self._start_timer, self._healthy_timer):       # 닫힌 창에서 늦게 울려 지워진 객체를 건드리지 않게 한다
