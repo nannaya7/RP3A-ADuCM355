@@ -6,9 +6,9 @@
 import re
 from typing import Optional
 
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QStringListModel, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QLinearGradient, QPainter, QPixmap
-from PyQt5.QtWidgets import (QCheckBox, QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout,
+from PyQt5.QtWidgets import (QCheckBox, QCompleter, QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout,
                              QWidget)
 
 from .theme import ASSETS
@@ -291,11 +291,47 @@ class LoginPage(QWidget):
             self._body.setContentsMargins(20, 0, 20, self._bottom_margin())   # 사진이 접히면 위쪽 여백을 준다
         self.layout().invalidate()
 
+    # ---- 최근 로그인 ID ----
+    def set_recent_ids(self, ids) -> None:
+        """ID 입력란을 누르면 이 목록(최신순, 최대 5개)이 아래로 펼쳐지고, 고르면 ID 가 채워진다. 글자를 치면 앞부분이 같은 것만 남는다."""
+        self._recent_model.setStringList(list(ids))
+
+    def _setup_recent(self) -> None:
+        self._recent_model = QStringListModel(self)
+        comp = QCompleter(self._recent_model, self)
+        comp.setCaseSensitivity(Qt.CaseInsensitive)
+        comp.setMaxVisibleItems(5)
+        comp.activated.connect(lambda _text: self.password.edit.setFocus())      # 고르면 바로 비밀번호 입력으로
+        self.email.edit.setCompleter(comp)
+        self._recent_completer = comp
+        self.email.edit.installEventFilter(self)
+
+    def eventFilter(self, obj, ev):
+        if obj is self.email.edit and ev.type() in (QEvent.FocusIn, QEvent.MouseButtonPress)                 and not self.email.edit.text() and self._recent_model.rowCount():
+            QTimer.singleShot(0, self._show_recent)               # 입력란이 비어 있을 때만 전체 목록을 펼친다
+        return super().eventFilter(obj, ev)
+
+    def _show_recent(self) -> None:
+        if self.email.edit.hasFocus() and not self.email.edit.text():
+            self._recent_completer.setCompletionPrefix("")
+            self._recent_completer.complete()
+
     def _wire(self):
+        self._setup_recent()
         self.login_btn.clicked.connect(self._submit)
         self.email.edit.returnPressed.connect(self._submit)
         self.password.edit.returnPressed.connect(self._submit)
         self.setFocus()  # 웹처럼 처음엔 어떤 입력란에도 포커스를 주지 않는다
+
+    def show_error(self, text: str) -> None:
+        """서버 로그인 실패 문구를 배너로 보인다."""
+        self.banner.setText(text)
+        self.banner.setVisible(bool(text))
+
+    def set_busy(self, busy: bool) -> None:
+        """로그인 요청 중에는 버튼을 막는다 (두 번 눌러도 한 번만 보낸다)."""
+        self.login_btn.setEnabled(not busy)
+        self.login_btn.setText("로그인 중…" if busy else "로그인")
 
     def _submit(self):
         self.banner.hide()

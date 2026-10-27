@@ -320,13 +320,19 @@ def test_assay_choice_is_refused_midway_and_remembered(tmp_path):
         win.shutdown()
 
 
-def test_monitor_and_back_buttons_still_work(tmp_path):
+def test_monitor_and_back_buttons_still_work(tmp_path, monkeypatch):
     win = make(tmp_path)
     try:
         win.measure.monitor_btn.click()
         assert win.currentWidget() is win.monitor
         win.monitor.back_btn.click()
         assert win.currentWidget() is win.measure
+        from app.ui import dialogs
+        answer = {"v": False}
+        monkeypatch.setattr(dialogs, "confirm", lambda *a, **k: answer["v"])
+        win.measure.back_btn.click()
+        assert win.currentWidget() is win.measure              # '아니오' 면 로그아웃하지 않는다
+        answer["v"] = True
         win.measure.back_btn.click()
         assert win.currentWidget() is win.login
     finally:

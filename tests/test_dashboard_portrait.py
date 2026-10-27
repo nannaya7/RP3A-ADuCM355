@@ -5,7 +5,9 @@ import json
 import pytest
 from PyQt5.QtGui import QFont
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtWidgets import QApplication
+
+from app.ui import dialogs
 
 from app.app_window import AppWindow
 from app.config import Config
@@ -178,7 +180,7 @@ def test_step_buttons_follow_state_and_waiting_timer(tmp_path):
         win.shutdown()
 
 
-def test_tab_nt_and_buttons(tmp_path):
+def test_tab_nt_and_buttons(tmp_path, monkeypatch):
     win = make(tmp_path)
     try:
         d = win.measure
@@ -188,6 +190,7 @@ def test_tab_nt_and_buttons(tmp_path):
         assert win.currentWidget() is win.monitor
         win.monitor.back_btn.click()
         assert win.currentWidget() is win.measure
+        monkeypatch.setattr(dialogs, "confirm", lambda *a, **k: True)
         d.back_btn.click()
         assert win.currentWidget() is win.login
     finally:
@@ -298,10 +301,10 @@ def test_delete_profile_clears_selection(tmp_path, monkeypatch):
         pid = win.profiles.all()[0].id
         d.select_profile(pid)
         d.edit_btn.click()
-        monkeypatch.setattr(QMessageBox, "question", staticmethod(lambda *a, **k: QMessageBox.No))
+        monkeypatch.setattr(dialogs, "confirm", lambda *a, **k: False)
         e.delete_btn.click()
         assert win.profiles.get(pid) is not None and win.currentWidget() is e
-        monkeypatch.setattr(QMessageBox, "question", staticmethod(lambda *a, **k: QMessageBox.Yes))
+        monkeypatch.setattr(dialogs, "confirm", lambda *a, **k: True)
         e.delete_btn.click()
         assert win.profiles.get(pid) is None and win.currentWidget() is win.measure
         assert d.selected_profile() is None and len(d._cards) == 2

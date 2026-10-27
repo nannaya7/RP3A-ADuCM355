@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, 
 from app.measure.patient import CHRONIC_DISEASES, SEXES, PatientProfile, missing_labels
 from app.measure.profiles import ProfileStore
 
+from . import dialogs
 from .dashboard_widgets import ChipSelect
 from .dashboard_page import SuffixEdit, _set_prop
 
@@ -220,8 +221,8 @@ class ProfileEditPage(QWidget):
         if not self._pid:
             return
         name = self.f_name.text()
-        if QMessageBox.question(self, "프로필 삭제", f"'{name}' 프로필을 삭제할까요?\n이미 저장된 검사 결과는 지워지지 않습니다.",
-                                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) == QMessageBox.Yes:
+        if dialogs.confirm(self, "프로필 삭제", f"'{name}' 프로필을 삭제할까요?\n이미 저장된 검사 결과는 지워지지 않습니다.",
+                           yes="삭제", no="취소"):
             pid, self._pid = self._pid, ""
             self._store.delete(pid)
             self.deleted.emit(pid)

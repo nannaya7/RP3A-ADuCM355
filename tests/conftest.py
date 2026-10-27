@@ -31,3 +31,4 @@ def _isolated_assay_file(tmp_path, monkeypatch):
     """창이 검사 항목 선택을 실제 data/assay.json 에 쓰거나 읽지 않게 한다."""
     import app.app_window as aw
     monkeypatch.setattr(aw, "_assay_path", lambda root: tmp_path / "assay.json")
+    monkeypatch.setattr(aw, "_recent_path", lambda root: tmp_path / "recent_logins.json")

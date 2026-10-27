@@ -20,6 +20,7 @@ from app.measure.profiles import ProfileStore
 from .dashboard_logic import (RunTracker, STEP_NAMES, DeviceView, ResultView, device_view, korean_datetime,
                               ref_text, result_view, step_button, step_views)
 from .dashboard_page import _set_prop, card
+from . import dialogs
 from .dashboard_widgets import DeviceStatusPanel, MiniIcon, ProfileCard, SectionIcon, StatusIcon, StepIllustration
 
 
@@ -138,7 +139,7 @@ class PortraitDashboard(QWidget):
         self.tab_cor = QPushButton("Cortisol", objectName="modelTab")        # 검토 중: 화면만 있고 계산 모델은 아직 없다
         self.tab_hist.setText("이력")
         for b, active in ((self.tab_tro, True), (self.tab_nt, False), (self.tab_cor, False), (self.tab_hist, False)):
-            b.setFixedSize({id(self.tab_tro): 72, id(self.tab_nt): 88, id(self.tab_cor): 66}.get(id(b), 54), 38)
+            b.setFixedSize({id(self.tab_tro): 72, id(self.tab_nt): 88, id(self.tab_cor): 66}.get(id(b), 54), 34)
             b.setFocusPolicy(Qt.NoFocus)
             b.setProperty("active", active)
         self.tab_tro.clicked.connect(lambda: self.assayRequested.emit("troponin"))
@@ -157,11 +158,11 @@ class PortraitDashboard(QWidget):
         top.addSpacing(54)                       # 우측 상단 설정 버튼 자리 (AppWindow 가 위에 얹는다)
         self._top_row = QWidget()
         self._top_row.setLayout(top)
-        self._top_row.setFixedHeight(38)
+        self._top_row.setFixedHeight(34)
         head = QVBoxLayout()                     # 탭이 4개라 날짜·시각은 탭 줄 바로 아래 한 줄로 둔다 (간격 없이 붙여 세로 공간을 아낀다)
         head.setSpacing(0)
         head.addWidget(self._top_row)
-        self.clock.setFixedHeight(14)
+        self.clock.setFixedHeight(13)
         clock_row = QHBoxLayout()
         clock_row.setContentsMargins(0, 0, 0, 0)
         clock_row.addStretch(1)
@@ -425,9 +426,8 @@ class PortraitDashboard(QWidget):
     def _on_reset(self) -> None:
         if self._ctrl is None:
             return
-        if self._ctrl.state == State.DONE or QMessageBox.question(
-                self, "처음부터", "지금까지 측정한 단계가 모두 지워집니다. 처음부터 다시 할까요?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) == QMessageBox.Yes:
+        if self._ctrl.state == State.DONE or dialogs.confirm(
+                self, "처음부터", "지금까지 측정한 단계가 모두 지워집니다. 처음부터 다시 할까요?", yes="처음부터", no="취소"):
             self._ctrl.restart()
 
     def _flash(self, text: str, level: str = "info", ms: int = 3500) -> None:

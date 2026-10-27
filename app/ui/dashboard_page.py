@@ -17,6 +17,7 @@ from app.measure.controller import MeasureController, State, ViewState, fmt_mmss
 from app.measure.history import classify, format_value, load_history
 from app.measure.patient import CHRONIC_DISEASES, SEXES, PatientProfile, missing_labels
 
+from . import dialogs
 from .dashboard_logic import (MEASURING, STEP_NAMES, DeviceView, ResultView, RunTracker, device_view, korean_datetime,
                               ref_text, result_view, step_views)
 from .dashboard_widgets import ChipSelect, DeviceStatusPanel, HistoryTable, SectionIcon, StepCard
@@ -397,9 +398,8 @@ class DashboardPage(QWidget):
     def _on_reset(self) -> None:
         if self._ctrl is None:
             return
-        if self._ctrl.state == State.DONE or QMessageBox.question(
-                self, "처음부터", "지금까지 측정한 단계가 모두 지워집니다. 처음부터 다시 할까요?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) == QMessageBox.Yes:
+        if self._ctrl.state == State.DONE or dialogs.confirm(
+                self, "처음부터", "지금까지 측정한 단계가 모두 지워집니다. 처음부터 다시 할까요?", yes="처음부터", no="취소"):
             self._ctrl.restart()
 
     def _flash(self, text: str, level: str = "info", ms: int = 3500) -> None:

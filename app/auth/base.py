@@ -8,6 +8,8 @@ class AuthResult:
     ok: bool
     token: str = ""
     message: str = ""
+    refresh_token: str = ""
+    role: str = ""            # 서버가 알려 준 역할 (GENERAL / MEDICAL / HOSPITAL)
 
 
 class AuthBackend(Protocol):

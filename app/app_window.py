@@ -9,6 +9,8 @@ from PyQt5.QtWidgets import QApplication, QLayout, QMessageBox, QStackedWidget, 
 
 from pathlib import Path
 
+from app.auth.recent_ids import RecentIds
+from app.auth.server_auth import ServerAuth
 from app.auth.skip_auth import SkipAuth
 from app.comm.firmware_client import FirmwareClient
 from app.comm.traffic_log import TrafficLog
@@ -19,6 +21,7 @@ from app.measure.stages import MeasureSettings, troponin_stages
 from app.measure.profiles import ProfileStore
 from app.measure.store import SessionStore
 from app.net import create_bluetooth, create_wifi
+from app.net.tasks import TaskRunner
 from app.ui.gear_button import GearButton
 from app.update import guard
 from app.update.controller import UpdateController, restart_process
@@ -26,6 +29,7 @@ from app.version import VERSION
 from app.ui.dashboard_page import DashboardPage
 from app.ui.dashboard_portrait import PortraitDashboard
 from app.ui.history_page import HistoryPage
+from app.ui import dialogs
 from app.ui.login_page import LoginPage
 from app.ui.monitor_page import MonitorPage
 from app.ui.profile_edit_page import ProfileEditPage
@@ -41,6 +45,10 @@ log = logging.getLogger(__name__)
 
 def _assay_path(root: Path) -> Path:
     return root / "data" / "assay.json"
+
+
+def _recent_path(root: Path) -> Path:
+    return root / "data" / "recent_logins.json"
 
 
 # 우측 상단 설정 버튼: (크기, 오른쪽 여백, 위 여백). 측정 화면의 '뒤로' 버튼과 세로 중심이 같도록 잡았다.
@@ -61,7 +69,10 @@ class AppWindow(QStackedWidget):
         self.profile = profile
         self.cfg = cfg
         self.session = Session()
-        self.auth = SkipAuth()  # 단계 5 에서 서버 인증으로 교체
+        self.auth = SkipAuth()                                   # [건너뛰기] 버튼용 (개발용)
+        self.recent_ids = RecentIds(_recent_path(Path(__file__).resolve().parent.parent))     # 최근 로그인 ID (최대 5개)
+        self.server_auth = ServerAuth(cfg.server_base_url)       # [로그인] 버튼: 로그인 서버
+        self._auth_runner = TaskRunner(self)                     # 로그인 요청은 백그라운드에서 (화면이 멈추지 않게)
         self.setWindowTitle("Vital")
         if cfg.fullscreen:
             self.setWindowFlag(Qt.FramelessWindowHint, True)
@@ -74,6 +85,7 @@ class AppWindow(QStackedWidget):
         self.setContentsMargins(0, 0, 0, self._bottom_safe)
 
         self.login = LoginPage(show_skip=cfg.skip_login, portrait=profile.is_portrait)
+        self.login.set_recent_ids(self.recent_ids.all())
         # UART → 펌웨어 클라이언트 → 측정 컨트롤러 (화면은 컨트롤러의 ViewState 만 그린다)
         root = Path(__file__).resolve().parent.parent
         self.sensor_store = SensorStore(root / "data" / "sensor.json")      # 설정 > 센서 에서 고른 센서 (재시작해도 유지)
@@ -216,10 +228,7 @@ class AppWindow(QStackedWidget):
         m = self.updates.manifest
         if m is None:
             return
-        box = QMessageBox(QMessageBox.Question, "업데이트", f"{m.version} 을(를) 설치하고 앱을 다시 시작할까요?",
-                          QMessageBox.Yes | QMessageBox.No, self)
-        box.setDefaultButton(QMessageBox.No)
-        if box.exec_() == QMessageBox.Yes:
+        if dialogs.confirm(self, "업데이트", f"{m.version} 을(를) 설치하고 앱을 다시 시작할까요?", yes="설치", no="취소"):
             self.updates.install()
 
     def _restart_app(self) -> None:
@@ -405,6 +414,7 @@ class AppWindow(QStackedWidget):
 
     def shutdown(self) -> None:
         """앱 종료 시: UART 스레드와 결과 파일을 정리한다."""
+        self._auth_runner.wait(1000)
         self.worker.stop()                                   # 연결돼 있으면 닫는다 (블루투스 센서는 연결 해제까지 기다린다)
         self.updates.wait(3000)
         self.settings.shutdown()
@@ -535,9 +545,27 @@ class AppWindow(QStackedWidget):
         if result.ok:
             self.go_to(self.measure)
 
-    def _on_login_requested(self, role, user_id, _password, _remember) -> None:
-        log.info("login requested (role=%s, id=%s) - server auth is not implemented yet", role, user_id)
+    def _on_login_requested(self, role, user_id, password, _remember) -> None:
+        self.login.set_busy(True)
+        self.login.show_error("")
+        auth = self.server_auth
+        self._auth_runner.submit(lambda: auth.login(role, user_id, password),
+                                 lambda result, err: self._on_login_done(role, user_id, result, err))
+
+    def _on_login_done(self, role, user_id, result, err) -> None:
+        self.login.set_busy(False)
+        if result is None or not result.ok:
+            self.login.show_error(err or (result.message if result is not None else "로그인에 실패했습니다."))
+            return
+        self.session.role, self.session.user_id, self.session.token = result.role or role, user_id, result.token
+        self.login.password.edit.clear()                         # 비밀번호는 화면에 남기지 않는다
+        self.recent_ids.add(user_id)
+        self.login.set_recent_ids(self.recent_ids.all())
+        log.info("login ok (id=%s, role=%s)", user_id, self.session.role)
+        self.go_to(self.measure)
 
     def _on_back(self) -> None:
+        if not dialogs.confirm(self, "로그아웃", "로그아웃하시겠습니까?", yes="로그아웃", no="취소"):
+            return
         self.session.clear()
         self.go_to(self.login)

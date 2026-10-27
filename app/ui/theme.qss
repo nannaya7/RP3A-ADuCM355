@@ -288,3 +288,11 @@ QProgressBar#devBar::chunk { background: #2FAF87; border-radius: 4px; }
 #dashPage[compact="true"] #stepNum { border-radius: 13px; font-size: 13px; }
 #dashPage[compact="true"] #stepBadge { font-size: 12px; padding: 0 8px; }
 #dashPage[compact="true"] #modelTab { font-size: 14px; }
+
+/* 확인/안내 팝업 (QMessageBox): 화면과 같은 민트 톤, 터치하기 쉬운 큰 버튼 */
+QMessageBox { background: #F4F9F6; border: 1px solid #C9D8D1; border-radius: 16px; }
+QMessageBox QLabel { background: transparent; color: #2B2B2B; font-size: 16px; min-width: 240px; }
+QMessageBox QPushButton { background: #FFFFFF; color: #424242; border: 1px solid #C9D8D1; border-radius: 10px; font-size: 15px; min-width: 96px; min-height: 44px; padding: 0 14px; }
+QMessageBox QPushButton:pressed { background: #E3EFE9; }
+QMessageBox QPushButton[primary="true"] { background: #2FAF87; color: #FFFFFF; border: none; font-weight: 700; }
+QMessageBox QPushButton[primary="true"]:pressed { background: #258D6C; }
