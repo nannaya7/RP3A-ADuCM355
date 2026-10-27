@@ -166,7 +166,9 @@ def result_view(cfg, v: ViewState, wait_seen: int, finished_at: Optional[datetim
         return ResultView()
     out = ResultView(done=True, value_text=format_value(r.value), ready=r.value is not None,
                      verified=r.value is not None)
-    if r.value is None:
+    if getattr(r, "pending", False):                      # 계산 모델이 아직 없는 검사 항목 (Cortisol)
+        out.note = "계산 모델이 아직 연결되지 않아 결과를 표시하지 않습니다."
+    elif r.value is None:
         warn = r.warnings[0] if r.warnings else ""
         out.note = "QC 불합격: 결과를 표시하지 않습니다. 마지막 단계를 다시 측정하세요." + (f"\n{warn}" if warn else "")
     else:

@@ -36,9 +36,9 @@ class Config:
     c0_source: str = "first"          # first: c0 = 첫 측정(센서 0·1·2) 결과 | none: 과거 Day-1 기준값
     results_dir: str = "results"
     require_patient: bool = True      # true: 환자 프로필 필수 항목(성명/성별/나이/몸무게)을 채워야 첫 단계를 시작할 수 있다
-    # 결과 표시 (단위와 참고 범위는 모델 담당자 확정 전까지 비워 둔다 → 숫자만 표시하고 정상/주의 판정은 하지 않는다)
+    # 결과 표시 (단위는 3가지 검사 모두 pg/mL 로 확정. 참고 범위는 확정 전까지 비워 둔다 → 정상/주의 판정은 하지 않는다)
     result_title: str = "Troponin"
-    result_unit: str = ""
+    result_unit: str = "pg/mL"
     ref_low: Optional[float] = None
     ref_high: Optional[float] = None
     method: str = "EIS"
@@ -47,7 +47,7 @@ class Config:
     update_check_on_start: bool = True    # 시작 후 한 번 새 버전을 조용히 확인 (설치는 사용자가 버튼으로)
     update_require_signature: bool = True # true: 서명이 맞는 패키지만 설치
     update_token: str = ""            # 비공개 서버의 읽기 토큰 (선택)
-    server_base_url: str = ""
+    server_base_url: str = "http://1.224.24.212:3001"      # 로그인 서버 (서버 로그인은 아직 구현 전: 주소만 보관)
 
 
 def _opt_float(text: str) -> Optional[float]:

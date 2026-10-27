@@ -106,7 +106,7 @@ class MeasureController(QObject):
         self.store = store
         self._clock = clock
         self.patient: dict = {}             # 환자 프로필 (화면이 채운다). 결과 파일에 함께 저장
-        self.assay = "troponin"             # 계산 모델: troponin | ntprobnp (config.ini [measure] assay)
+        self.assay = "troponin"             # 계산 모델: troponin | ntprobnp | cortisol (config.ini [measure] assay)
         self.meta: dict = {}                # 결과 표시 정보 (title, unit, ref_low, ref_high). 이력 판정에 쓴다
 
         self._state = State.DISCONNECTED
@@ -353,7 +353,10 @@ class MeasureController(QObject):
     @property
     def model(self) -> "TroponinModel":
         if self._model is None:
-            if self.assay == "ntprobnp":
+            if self.assay == "cortisol":
+                from app.models.cortisol import CortisolModel
+                self._model = CortisolModel()
+            elif self.assay == "ntprobnp":
                 from app.models.ntprobnp import NtProBnpModel
                 self._model = NtProBnpModel()
             else:

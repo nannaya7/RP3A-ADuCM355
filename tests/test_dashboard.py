@@ -204,10 +204,10 @@ def test_patient_is_saved_in_result_and_summary(tmp_path):
 
 # ---------------- 단위 / 참고 범위 ----------------
 def test_no_reference_range_means_no_judgement(tmp_path):
-    win = make(tmp_path)                                         # 기본: 단위·참고 범위 없음
+    win = make(tmp_path)                                         # 기본: 단위 pg/mL, 참고 범위 없음
     try:
         d = win.measure
-        assert d.res_ref.text() == "미설정" and not d.res_unit.isVisible()
+        assert d.res_ref.text() == "미설정" and d.res_unit.text() == "pg/mL"
         fill(d)
         for n in (1, 2, 3):
             run_stage(d, win, n)
@@ -408,3 +408,28 @@ def test_history_page_search_filter_and_reset(tmp_path):
     assert page.table.rowCount() == 3 and page.query == "" and page.sort_btn.text() == "정렬: 최신순"
     page.search.edit.setText("없는사람")
     assert page.table.rowCount() == 0 and "맞는 기록이 없습니다" in page.count.text()
+
+
+def test_cortisol_tab_shows_the_troponin_like_screen_without_a_model(tmp_path):
+    win = make(tmp_path)
+    try:
+        d = win.measure
+        d.tab_cor.click()
+        assert win.controller.assay == "cortisol" and d.tab_cor.property("active") is True
+        assert d.tab_tro.property("active") is False and d.res_title.text() == "Cortisol"
+        assert win._load_assay() == "cortisol"
+        d.tab_tro.click()
+        assert win.controller.assay == "troponin" and d.tab_cor.property("active") is False
+    finally:
+        win.shutdown()
+
+
+def test_cortisol_placeholder_model_gives_no_value_and_a_pending_note():
+    from app.models.cortisol import CortisolModel
+    from types import SimpleNamespace
+    from app.measure.controller import State
+    from app.ui.dashboard_logic import result_view
+    r = CortisolModel().predict([], [], [])
+    assert r.value is None and r.pending and not r.qc_pass
+    note = result_view(Config(), SimpleNamespace(state=State.DONE, result=r), 0, None).note
+    assert "연결되지 않아" in note

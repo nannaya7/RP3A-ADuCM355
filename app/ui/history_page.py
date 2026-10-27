@@ -14,7 +14,7 @@ from app.measure.history import SORTS, STATUSES, HistoryItem, find_history, load
 from .dashboard_widgets import HistoryTable
 from .widgets import Field
 
-ASSAY_CHIPS = (("전체", ""), ("Troponin", "Troponin"), ("NT-proBNP", "NT-proBNP"))     # (화면 문구, 기록의 검사 항목 이름)
+ASSAY_CHIPS = (("전체", ""), ("Troponin", "Troponin"), ("NT-proBNP", "NT-proBNP"), ("Cortisol", "Cortisol"))     # (화면 문구, 기록의 검사 항목 이름)
 LOAD_LIMIT = 500                  # 한 번에 읽는 최대 기록 수 (오래된 것은 검색 대상에서 빠진다)
 
 

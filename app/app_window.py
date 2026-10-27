@@ -52,6 +52,7 @@ GEAR_LANDSCAPE = (44, 24, 12)
 BG_DEFAULT, BG_BLUE = QColor("#E9F1ED"), QColor("#F2F6FB")       # theme.qss 의 페이지 배경 (초록 계열 / 측정·프로필·이력 파랑 계열)
 BLUE_PAGES = ("dashPage", "profilePage", "historyPage")
 PATCH_NOT_CONNECTED = "먼저 센서를 연결해 주세요."
+UNIT = "pg/mL"                                  # 측정 단위: Troponin, NT-proBNP, Cortisol 모두 같다
 
 
 class AppWindow(QStackedWidget):
@@ -482,14 +483,16 @@ class AppWindow(QStackedWidget):
         except (OSError, ValueError, AttributeError):
             key = None
         key = key or self._base_cfg.assay
-        return key if key in ("troponin", "ntprobnp") else "troponin"
+        return key if key in ("troponin", "ntprobnp", "cortisol") else "troponin"
 
     def _assay_cfg(self, key: str):
         """검사 항목에 맞는 결과 표시 설정. NT-proBNP 는 단위 pg/mL, 참고 범위 없음 (확정 전)."""
+        if key == "cortisol":              # 검토 중: 제목만 바꾼다 (단위·참고 범위 미정)
+            return dataclasses.replace(self._base_cfg, result_title="Cortisol", result_unit=UNIT, ref_low=None, ref_high=None)
         if key == "ntprobnp":
-            return dataclasses.replace(self._base_cfg, result_title="NT-proBNP", result_unit="pg/mL",
+            return dataclasses.replace(self._base_cfg, result_title="NT-proBNP", result_unit=UNIT,
                                        ref_low=None, ref_high=None)
-        return self._base_cfg
+        return dataclasses.replace(self._base_cfg, result_unit=self._base_cfg.result_unit or UNIT)
 
     def _apply_assay(self, key: str) -> None:
         cfg = self._assay_cfg(key)

@@ -109,18 +109,21 @@ class DashboardPage(QWidget):
         self.tab_tro = QPushButton("Troponin", objectName="modelTab")
         self.tab_nt = QPushButton("NT-ProBNP", objectName="modelTab")
         self.tab_hist = QPushButton("검사이력", objectName="modelTab")      # 화면 전환(검사 항목이 아님): 눌러도 활성 표시는 바뀌지 않는다
-        for b, active in ((self.tab_tro, True), (self.tab_nt, False), (self.tab_hist, False)):
-            b.setFixedSize(220 if b is not self.tab_hist else 160, 46)
+        self.tab_cor = QPushButton("Cortisol", objectName="modelTab")        # 검토 중: 화면만 있고 계산 모델은 아직 없다
+        for b, active in ((self.tab_tro, True), (self.tab_nt, False), (self.tab_cor, False), (self.tab_hist, False)):
+            b.setFixedSize({id(self.tab_tro): 200, id(self.tab_nt): 200, id(self.tab_cor): 170}.get(id(b), 140), 46)
             b.setFocusPolicy(Qt.NoFocus)
             b.setProperty("active", active)
         self.tab_tro.clicked.connect(lambda: self.assayRequested.emit("troponin"))
         self.tab_nt.clicked.connect(lambda: self.assayRequested.emit("ntprobnp"))
+        self.tab_cor.clicked.connect(lambda: self.assayRequested.emit("cortisol"))
         self.tab_hist.clicked.connect(self.historyRequested)
         self.clock = QLabel("", objectName="dashClock")
         top.addWidget(self.back_btn)
         top.addSpacing(6)
         top.addWidget(self.tab_tro)
         top.addWidget(self.tab_nt)
+        top.addWidget(self.tab_cor)
         top.addWidget(self.tab_hist)
         top.addStretch(1)
         top.addWidget(self.clock)
@@ -425,6 +428,7 @@ class DashboardPage(QWidget):
         self._cfg = cfg
         _set_prop(self.tab_tro, "active", key == "troponin")
         _set_prop(self.tab_nt, "active", key == "ntprobnp")
+        _set_prop(self.tab_cor, "active", key == "cortisol")
         self.res_title.setText(cfg.result_title)
         self.res_unit.setText(cfg.result_unit)
         self.res_unit.setVisible(bool(cfg.result_unit))
