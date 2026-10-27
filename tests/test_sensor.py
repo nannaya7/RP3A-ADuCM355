@@ -193,6 +193,67 @@ def test_app_switches_sensor_and_saves_choice(tmp_path, profile):
         win.shutdown()
 
 
+# ---------------- 패치 센서 선택 (여러 대) ----------------
+def test_patch_choice_is_saved_next_to_mode_and_overrides_config(tmp_path):
+    s = SensorStore(tmp_path / "sensor.json")
+    assert s.load_patch() == ("", "")
+    assert s.save(PATCH) and s.save_patch("FD:41:B5:7D:8E:23", "nFor20-t02")
+    assert s.load() == PATCH and s.load_patch() == ("FD:41:B5:7D:8E:23", "nFor20-t02")     # 서로 지우지 않는다
+    assert s.save(BUILTIN) and s.load_patch() == ("FD:41:B5:7D:8E:23", "nFor20-t02")
+    assert s.save_patch("", "") and s.load_patch() == ("", "") and s.load() == BUILTIN
+
+
+def test_scan_keeps_only_patch_candidates_strongest_first(monkeypatch):
+    import asyncio
+    import types
+    from app.comm import ble_transport as bt
+
+    def dev(name, addr):
+        return types.SimpleNamespace(name=name, address=addr)
+
+    def adv(rssi, uuids=()):
+        return types.SimpleNamespace(rssi=rssi, local_name=None, service_uuids=list(uuids))
+
+    class FakeScanner:
+        @staticmethod
+        async def discover(timeout, return_adv):
+            await asyncio.sleep(0)
+            return {"1": (dev("nFor20-t01", "AA:01"), adv(-80)), "2": (dev("nFor20-t02", "AA:02"), adv(-55)),
+                    "3": (dev("Keyboard", "AA:03"), adv(-40)), "4": (dev(None, "AA:04"), adv(-60, [bt.NUS_SERVICE]))}
+
+    monkeypatch.setitem(sys.modules, "bleak", types.SimpleNamespace(BleakScanner=FakeScanner))
+    found = bt.scan_patch_sensors("nFor", 0.1)
+    assert [f.address for f in found] == ["AA:02", "AA:04", "AA:01"]        # 키보드는 빠지고 신호가 센 순
+
+
+def test_app_connects_to_the_chosen_patch_sensor(tmp_path):
+    win = make_window(tmp_path, PORTRAIT)
+    try:
+        assert win._sensor_cfg().patch_address == ""
+        win.settings.sensor.patchSelected.emit("FD:41:B5:7D:8E:23", "nFor20-t02")
+        assert win._sensor_cfg().patch_address == "FD:41:B5:7D:8E:23"
+        assert SensorStore(tmp_path / "sensor.json").load_patch() == ("FD:41:B5:7D:8E:23", "nFor20-t02")
+        assert "nFor20-t02" in win.settings.sensor.picked.text() and win.settings.sensor.clear_btn.isEnabled()
+        real = dataclasses.replace(win._sensor_cfg(), uart_mock=False)
+        assert make_transport(PATCH, real).name == "ble:FD:41:B5:7D:8E:23"                   # 그 장치로만 연결한다
+        win.settings.sensor.patchCleared.emit()
+        assert win._sensor_cfg().patch_address == "" and not win.settings.sensor.clear_btn.isEnabled()
+    finally:
+        win.shutdown()
+
+
+def test_scan_button_lists_devices_and_clicking_one_selects_it(tmp_path):
+    win = make_window(tmp_path, LANDSCAPE)                           # 가상 모드: 가짜 센서 2대
+    try:
+        win.settings.sensor.scan_btn.click()
+        wait(lambda: win.settings.sensor.found.count() == 2)
+        assert win.settings.sensor.scan_btn.isEnabled() and win.settings.sensor.scan_btn.text() == "검색"
+        win.settings.sensor.found.itemClicked.emit(win.settings.sensor.found.item(1))
+        assert win._patch_sel[1] == "nFor20-t02"
+    finally:
+        win.shutdown()
+
+
 class SilentTransport(FakeTransport):
     """포트는 열리지만 모듈이 아무 응답도 하지 않는다 (패치가 꺼져 있거나 다른 장치에 연결된 경우)."""
 

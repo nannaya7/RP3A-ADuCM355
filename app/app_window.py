@@ -1,4 +1,5 @@
 """앱 최상위 창. 페이지는 QStackedWidget 한 곳에서 관리하고, 전환은 go_to() 로만 한다."""
+import dataclasses
 import logging
 import time
 
@@ -76,7 +77,8 @@ class AppWindow(QStackedWidget):
         self._link_up = False
         self._probe = None                                    # 패치 센서를 켜는 중이면 진행 정보
         self.probe_timeout_s = 20.0                           # 포트 열기 + STATUS 응답을 기다리는 최대 시간
-        self.worker = UartWorker(make_transport(self.sensor_mode, cfg))
+        self._patch_sel = self.sensor_store.load_patch()      # 설정 > 센서 에서 고른 패치 센서 (주소, 이름). 없으면 config.ini 기준
+        self.worker = UartWorker(make_transport(self.sensor_mode, self._sensor_cfg()))
         self.client = FirmwareClient(self.worker)
         root = Path(__file__).resolve().parent.parent
         results = Path(cfg.results_dir)
@@ -105,6 +107,10 @@ class AppWindow(QStackedWidget):
         self._probe_timer.timeout.connect(self._probe_tick)
         self.settings.sensor.set_mode(self.sensor_mode)
         self.settings.sensorModeRequested.connect(self._on_sensor_mode)
+        self.settings.sensor.set_picked(*self._patch_sel)
+        self.settings.sensor.scanRequested.connect(self._on_patch_scan)
+        self.settings.sensor.patchSelected.connect(self._on_patch_selected)
+        self.settings.sensor.patchCleared.connect(self._on_patch_cleared)
         self.worker.connectionChanged.connect(self._on_link_changed)
         self.controller.viewChanged.connect(self._on_controller_view)      # STATUS 확인 결과 반영
         self.worker.errorOccurred.connect(self._on_link_error)
@@ -265,6 +271,63 @@ class AppWindow(QStackedWidget):
         self.settings.sensor.show_msg(PATCH_NOT_CONNECTED, "error")
         self.notify(PATCH_NOT_CONNECTED)
 
+    # ---- 패치 센서 선택 (센서가 여러 대일 때) ----
+    def _sensor_cfg(self) -> Config:
+        """고른 패치 센서가 있으면 그 주소로 연결하도록 바꾼 설정 (config.ini 의 patch_address 보다 우선)."""
+        addr = self._patch_sel[0]
+        return dataclasses.replace(self.cfg, patch_address=addr) if addr else self.cfg
+
+    def _on_patch_scan(self) -> None:
+        from app.comm.ble_transport import BleFound, scan_patch_sensors
+        why = self._bt_scan_block_reason() or self._sensor_switch_blocked()
+        if why:
+            self.settings.sensor.show_msg(why, "error")
+            return
+        sp = self.settings.sensor
+        sp.show_msg("패치 센서를 검색하는 중…")
+        sp.set_scanning(True)
+        if self.cfg.uart_mock:                                      # 가상 모드: 실제 라디오 없이 화면만 확인
+            fake = [BleFound("nFor20-t01", "CB:74:84:B6:2B:63", -58), BleFound("nFor20-t02", "FD:41:B5:7D:8E:23", -71)]
+            self.settings.runner.submit(lambda: fake, self._on_patch_scanned)
+            return
+        self.settings.runner.submit(lambda: scan_patch_sensors(self.cfg.patch_name), self._on_patch_scanned)
+
+    def _on_patch_scanned(self, found, err: str) -> None:
+        sp = self.settings.sensor
+        sp.set_scanning(False)
+        if err:
+            sp.set_found([])
+            sp.show_msg(f"검색하지 못했습니다. {err}", "error")
+        elif not found:
+            sp.set_found([])
+            sp.show_msg("패치 센서를 찾지 못했습니다. 센서 전원과 거리를 확인하세요. (이미 연결된 센서는 검색되지 않습니다)", "error")
+        else:
+            sp.set_found(found)
+            sp.show_msg(f"{len(found)}대를 찾았습니다. 연결할 센서를 선택하세요.")
+
+    def _on_patch_selected(self, address: str, name: str) -> None:
+        why = self._sensor_switch_blocked()
+        if why:
+            self.settings.sensor.show_msg(why, "error")
+            return
+        self._set_patch_sel(address, name)
+        self.settings.sensor.show_msg(f"패치 센서 {name or address} 을(를) 선택했습니다.")
+
+    def _on_patch_cleared(self) -> None:
+        why = self._sensor_switch_blocked()
+        if why:
+            self.settings.sensor.show_msg(why, "error")
+            return
+        self._set_patch_sel("", "")
+        self.settings.sensor.show_msg("선택을 해제했습니다. 이름이 nFor 로 시작하는 장치에 자동으로 연결합니다.")
+
+    def _set_patch_sel(self, address: str, name: str) -> None:
+        self._patch_sel = (address, name)
+        self.sensor_store.save_patch(address, name)
+        self.settings.sensor.set_picked(address, name)
+        if self.sensor_mode == PATCH:                               # 패치 센서가 켜져 있으면 새 장치로 다시 연결한다
+            self.set_sensor_mode(PATCH, persist=False)
+
     def notify(self, text: str) -> None:
         """사용자에게 알리는 팝업 (확인 버튼 하나)."""
         box = QMessageBox(QMessageBox.Information, "센서", text, QMessageBox.Ok, self)
@@ -276,7 +339,7 @@ class AppWindow(QStackedWidget):
         self._link_error = ""
         if persist:
             self.sensor_store.save(mode)
-        self.worker.set_transport(make_transport(mode, self.cfg))
+        self.worker.set_transport(make_transport(mode, self._sensor_cfg()))
         self.settings.sensor.set_mode(mode)
         self._refresh_sensor_status()
         log.info("sensor mode: %s", mode)
@@ -304,7 +367,7 @@ class AppWindow(QStackedWidget):
             self._link_up = connected
         on = self.sensor_mode != OFF
         up = self._link_up and on
-        detail = describe(self.sensor_mode, self.cfg) if on else ""
+        detail = describe(self.sensor_mode, self._sensor_cfg()) if on else ""
         checking = False
         if up:                                                        # 포트가 열려도 모듈이 STATUS 에 응답해야 '연결됨'
             st = self.controller.state

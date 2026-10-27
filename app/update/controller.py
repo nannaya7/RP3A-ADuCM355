@@ -3,11 +3,13 @@
 상태: idle → checking → (uptodate | available | error) → downloading → installing → installed(재시작) | error
 설치는 사용자가 버튼으로만 시작한다. 검사 중에는 확인도 설치도 하지 않는다 (blocked 가 이유 문구를 돌려준다).
 """
+from __future__ import annotations
+
 import logging
 import os
 import sys
 from pathlib import Path
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from PyQt5.QtCore import QObject, QTimer, pyqtSignal
 
@@ -15,7 +17,10 @@ from app.net.errors import NetError
 from app.net.tasks import TaskRunner
 from app.version import VERSION
 
-from . import guard, updater
+from . import guard
+
+if TYPE_CHECKING:       # updater(urllib/ssl/tarfile)는 처음 확인·설치할 때 불러온다 (앱 시작을 늦추지 않도록)
+    from . import updater
 
 log = logging.getLogger(__name__)
 
@@ -72,6 +77,7 @@ class UpdateController(QObject):
         cfg = self.cfg
 
         def work():
+            from . import updater
             try:
                 return updater.fetch_manifest(cfg.update_url, cfg.update_token)
             except updater.UpdateError as e:
@@ -80,6 +86,7 @@ class UpdateController(QObject):
         self._runner.submit(work, lambda m, err: self._checked(m, err, silent))
 
     def _checked(self, m, err: str, silent: bool) -> None:
+        from . import updater
         if err:
             log.info("update check failed: %s", err)
             if not silent:
@@ -108,6 +115,7 @@ class UpdateController(QObject):
         self._set(DOWNLOADING, f"{m.version} 을(를) 내려받아 설치하는 중… 전원을 끄지 마세요.")
 
         def work():
+            from . import updater
             try:
                 updater.verify_signature(m, required=cfg.update_require_signature)
                 archive = updater.download(m, guard.update_dir(root) / "download", cfg.update_token)

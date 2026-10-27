@@ -1,6 +1,7 @@
 import argparse
 import logging
 import sys
+import threading
 from dataclasses import replace
 from pathlib import Path
 
@@ -14,11 +15,20 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QApplication
 
-from app.app_window import AppWindow
 from app.config import load_config
 from app.display import pick_screen, select_profile
 from app.logsetup import fix_runtime_dir, install_qt_filter, level_from, setup_logging
+from app.ui.splash import StartupSplash
 from app.ui.theme import load_fonts, load_stylesheet
+
+
+def _preload() -> None:
+    """화면이 뜬 뒤 백그라운드에서 미리 불러 둔다 → 처음 쓸 때(검사 계산, 업데이트 확인) 멈칫하지 않는다."""
+    try:
+        import app.models.troponin  # noqa: F401  (numpy)
+        import app.update.updater  # noqa: F401  (urllib/ssl/tarfile)
+    except Exception:
+        pass
 
 
 def main() -> int:
@@ -49,6 +59,9 @@ def main() -> int:
     if warn:
         logging.getLogger("main").warning(warn)
     profile = select_profile(cfg.display_profile, screen.size())
+    splash = StartupSplash(profile.size, cfg.fullscreen, screen)     # 무거운 불러오기·화면 만들기 동안 먼저 보여 준다
+    app.processEvents()
+    from app.app_window import AppWindow                             # 가장 오래 걸리는 import 는 스플래시를 띄운 뒤에
     win = AppWindow(profile, cfg)
     win.move(screen.geometry().topLeft())            # 지정한 화면으로 (전체화면도 그 화면에서 열린다)
     try:
@@ -62,6 +75,9 @@ def main() -> int:
         win.showFullScreen()
     else:
         win.show()
+    app.processEvents()
+    splash.close()
+    threading.Thread(target=_preload, name="preload", daemon=True).start()
     # 아래가 잘릴 때 원인을 찾기 위한 정보: 화면(전체/사용 가능), 창 크기·위치. 보려면 python3 main.py -v
     log = logging.getLogger("main")
     log.info("screen %s size=%s available=%s", screen.name(), screen.size(), screen.availableGeometry())

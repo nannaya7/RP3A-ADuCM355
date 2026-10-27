@@ -8,17 +8,21 @@ UI 는 `viewChanged(ViewState)` 를 받아 그리기만 하고, 버튼은 아래
     → (혈액투입 단계는 반응 대기 타이머가 끝나야 버튼 활성) → [측정 시작] → … → [측정 시작] → … → 계산 → 결과
 각 단계는 사용자가 수락(버튼)해야 시작된다. 자동 진행은 StageDef.auto_start 로만 켠다.
 """
+from __future__ import annotations
+
 import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
 from PyQt5.QtCore import QObject, QTimer, pyqtSignal
 
 from app.comm import protocol as p
 from app.comm.firmware_client import FirmwareClient
-from app.models.troponin import TroponinInputError, TroponinModel, TroponinResult, make_curve
+
+if TYPE_CHECKING:       # numpy 가 들어 있는 모델은 처음 쓸 때 불러온다 (앱 시작을 늦추지 않도록)
+    from app.models.troponin import TroponinModel, TroponinResult
 
 from .stages import MeasureSettings, StageDef
 from .store import SessionStore
@@ -98,7 +102,7 @@ class MeasureController(QObject):
         self.client = client
         self.settings = settings
         self.stages = stages
-        self.model = model or TroponinModel()
+        self._model = model
         self.store = store
         self._clock = clock
         self.patient: dict = {}             # 환자 프로필 (화면이 채운다). 결과 파일에 함께 저장
@@ -332,7 +336,19 @@ class MeasureController(QObject):
         self._set_state(State.ERROR)
 
     # ================= 계산 =================
+    @property
+    def model(self) -> "TroponinModel":
+        if self._model is None:
+            from app.models.troponin import TroponinModel
+            self._model = TroponinModel()
+        return self._model
+
+    @model.setter
+    def model(self, value: "TroponinModel") -> None:
+        self._model = value
+
     def _curves(self, stage_index: int):
+        from app.models.troponin import make_curve
         out = []
         for ch in self.settings.channels:
             recs = self._done[stage_index][ch]
@@ -341,6 +357,7 @@ class MeasureController(QObject):
         return out
 
     def _compute(self) -> None:
+        from app.models.troponin import TroponinInputError
         self._set_state(State.COMPUTING)
         try:
             names = {"t2": [f"센서{c}" for c in self.settings.channels]}

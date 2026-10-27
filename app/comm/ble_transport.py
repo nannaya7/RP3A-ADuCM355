@@ -9,13 +9,47 @@ import asyncio
 import logging
 import queue
 import threading
-from typing import Optional
+import warnings
+from typing import List, NamedTuple, Optional
 
 log = logging.getLogger(__name__)
 
 NUS_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 NUS_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"      # 앱 → 모듈 (write)
 NUS_TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"      # 모듈 → 앱 (notify)
+
+
+NUS_MAX_CHUNK = 244                                    # 펌웨어 NRF_SDH_BLE_GATT_MAX_MTU_SIZE(247) - 3
+
+class BleFound(NamedTuple):
+    name: str
+    address: str
+    rssi: Optional[int]
+
+
+def scan_patch_sensors(name_prefix: str = "nFor", timeout: float = 5.0) -> List[BleFound]:
+    """주변의 패치 센서 후보(이름이 name_prefix 로 시작하거나 NUS 서비스를 광고하는 장치)를 찾는다. 신호가 센 순.
+    블로킹이므로 백그라운드 스레드에서 부른다. 실패하면 OSError."""
+    try:
+        from bleak import BleakScanner
+    except ImportError as e:
+        raise OSError("bleak is not installed") from e
+    prefix = name_prefix.strip().lower()
+
+    async def run():
+        return await BleakScanner.discover(timeout=timeout, return_adv=True)
+
+    try:
+        found = asyncio.run(run())
+    except Exception as e:
+        raise OSError(str(e) or e.__class__.__name__) from e
+    out = []
+    for dev, adv in found.values():
+        name = dev.name or adv.local_name or ""
+        nus = NUS_SERVICE in [u.lower() for u in (adv.service_uuids or [])]
+        if nus or (prefix and name.lower().startswith(prefix)):
+            out.append(BleFound(name, dev.address, adv.rssi))
+    return sorted(out, key=lambda f: (-(f.rssi if f.rssi is not None else -200), f.name.lower()))
 
 
 class BleNusTransport:
@@ -115,8 +149,23 @@ class BleNusTransport:
             await client.disconnect()
             self._client = None
             raise
-        self._chunk = max(20, (getattr(client, "mtu_size", 23) or 23) - 3)
-        log.info("ble sensor connected: %s (%s), chunk=%d", dev.name, dev.address, self._chunk)
+        mtu = await self._read_mtu(client)
+        self._chunk = min(max(20, mtu - 3), NUS_MAX_CHUNK)
+        log.info("ble sensor connected: %s (%s), mtu=%d, chunk=%d", dev.name, dev.address, mtu, self._chunk)
+
+    @staticmethod
+    async def _read_mtu(client) -> int:
+        """협상된 ATT MTU. BlueZ 백엔드의 bleak 은 _acquire_mtu() 를 부르기 전에는 기본값(23)과 경고만 돌려준다.
+        비공개 함수라 실패해도 연결은 계속한다 (기본값 → 20바이트씩 보낸다)."""
+        acquire = getattr(getattr(client, "_backend", None), "_acquire_mtu", None)
+        if acquire is not None:
+            try:
+                await acquire()
+            except Exception as e:
+                log.debug("ble mtu acquire failed: %s", e)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            return getattr(client, "mtu_size", 23) or 23
 
     async def _write(self, data: bytes) -> None:
         for i in range(0, len(data), self._chunk):

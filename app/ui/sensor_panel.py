@@ -5,7 +5,8 @@
 """
 from PyQt5.QtCore import QRectF, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QPainter
-from PyQt5.QtWidgets import QAbstractButton, QBoxLayout, QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import (QAbstractButton, QAbstractItemView, QBoxLayout, QFrame, QHBoxLayout, QLabel, QListWidget,
+                             QListWidgetItem, QPushButton, QSizePolicy, QVBoxLayout, QWidget)
 
 from app.comm.sensor import BUILTIN, OFF, PATCH, toggled
 
@@ -72,6 +73,9 @@ class SensorCard(QFrame):
 
 class SensorPanel(QWidget):
     modeRequested = pyqtSignal(str)          # patch / builtin / off
+    scanRequested = pyqtSignal()             # 패치 센서 검색
+    patchSelected = pyqtSignal(str, str)     # (BLE 주소, 이름)
+    patchCleared = pyqtSignal()
 
     def __init__(self, portrait: bool = False, patch_how: str = "블루투스로 ADuCM355 연결",
                  builtin_how: str = "UART로 ADuCM355 연결"):
@@ -101,10 +105,70 @@ class SensorPanel(QWidget):
                            objectName="devInfo", wordWrap=True)
         self.msg = QLabel("", objectName="netMsg", wordWrap=True)
         self.msg.hide()
+        root.addWidget(self._build_picker(portrait))
         root.addWidget(self.hint)
         root.addWidget(self.msg)
         root.addStretch(1)
         self._sync()
+
+    def _build_picker(self, portrait: bool) -> QFrame:
+        """패치 센서가 여러 대일 때 연결할 장치를 고른다. 고르지 않으면 이름이 nFor 로 시작하는 첫 장치에 연결된다."""
+        card = QFrame(objectName="devDetail")
+        col = QVBoxLayout(card)
+        col.setContentsMargins(*((18, 14, 18, 14) if portrait else (24, 18, 24, 18)))
+        col.setSpacing(6)
+        col.addWidget(QLabel("패치 센서 선택", objectName="devTitle"))
+        self.picked = QLabel("", objectName="devInfo", wordWrap=True)
+        col.addWidget(self.picked)
+
+        self.found = QListWidget(objectName="devList")
+        self.found.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.found.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.found.setFocusPolicy(Qt.NoFocus)
+        self.found.setFixedHeight(120 if portrait else 110)
+        self.found.itemClicked.connect(self._on_found_clicked)
+        self.found.hide()
+        col.addWidget(self.found)
+
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        self.scan_btn = QPushButton("검색", objectName="primaryBtn")
+        self.clear_btn = QPushButton("선택 해제", objectName="ghostBtn")
+        for b in (self.scan_btn, self.clear_btn):
+            b.setFocusPolicy(Qt.NoFocus)
+            b.setFixedHeight(48 if portrait else 52)
+            row.addWidget(b, 1)
+        self.scan_btn.clicked.connect(self.scanRequested)
+        self.clear_btn.clicked.connect(self.patchCleared)
+        col.addLayout(row)
+        self.set_picked("", "")
+        return card
+
+    # ---- 패치 센서 선택 ----
+    def set_picked(self, address: str, name: str) -> None:
+        if address:
+            self.picked.setText(f"선택한 센서: {name or '(이름 없음)'} · {address}")
+        else:
+            self.picked.setText("선택 안 함 — 이름이 nFor 로 시작하는 장치에 자동으로 연결합니다.\n"
+                                "센서가 여러 대이면 [검색]으로 찾아 하나를 고르세요.")
+        self.clear_btn.setEnabled(bool(address))
+
+    def set_scanning(self, busy: bool) -> None:
+        self.scan_btn.setEnabled(not busy and not self._locked)
+        self.scan_btn.setText("검색 중…" if busy else "검색")
+
+    def set_found(self, devices) -> None:
+        """devices: (이름, 주소, rssi) 목록. 비어 있으면 목록을 숨긴다."""
+        self.found.clear()
+        for name, address, rssi in devices:
+            it = QListWidgetItem(f"{name or '(이름 없음)'}\n{address}" + (f"   {rssi} dBm" if rssi is not None else ""))
+            it.setData(Qt.UserRole, (address, name))
+            self.found.addItem(it)
+        self.found.setVisible(self.found.count() > 0)
+
+    def _on_found_clicked(self, item: QListWidgetItem) -> None:
+        address, name = item.data(Qt.UserRole)
+        self.patchSelected.emit(address, name)
 
     # ---- 바깥에서 부르는 것 ----
     def open(self) -> None:                  # 설정 탭 공통 인터페이스 (읽을 것이 없다)
@@ -125,6 +189,7 @@ class SensorPanel(QWidget):
         self._locked = locked
         for c in (self.patch, self.builtin):
             c.switch.setEnabled(not locked)
+        self.scan_btn.setEnabled(not locked)
 
     def show_msg(self, text: str, level: str = "ok") -> None:
         self.msg.setText(text)

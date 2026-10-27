@@ -2,15 +2,15 @@
 
 - 내장 센서: 기존대로 UART(config.ini [uart] port) 로 ADuCM355 에 연결한다.
 - 패치 센서: BLE(Nordic UART Service)로 연결된 ADuCM355. UART 를 그대로 흉내 내므로 패킷 처리는 유선과 같다
-  (config.ini [sensor] patch_name / patch_address). 두 센서는 동시에 켤 수 없다 (하나를 켜면 다른 하나는 자동으로 꺼진다).
+  (config.ini [sensor] patch_name / patch_address). 설정 > 센서 에서 고른 장치의 주소(data/sensor.json)가 있으면 그것이 우선한다.
+  두 센서는 동시에 켤 수 없다 (하나를 켜면 다른 하나는 자동으로 꺼진다).
 """
 import json
 import logging
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
-from .ble_transport import BleNusTransport
 from .transport import Transport, create_transport
 
 log = logging.getLogger(__name__)
@@ -37,26 +37,44 @@ class SensorStore:
     def __init__(self, path: Path):
         self.path = Path(path)
 
-    def load(self, default: str = BUILTIN) -> str:
+    def _read(self) -> dict:
         try:
             data = json.loads(self.path.read_text(encoding="utf-8"))
-            return normalize(data.get("mode"), default)
+            return data if isinstance(data, dict) else {}
         except FileNotFoundError:
-            return default
-        except (OSError, ValueError, AttributeError) as e:
+            return {}
+        except (OSError, ValueError) as e:
             log.warning("cannot read the sensor setting (%s): %s", self.path, e)
-            return default
+            return {}
 
-    def save(self, mode: str) -> bool:
+    def _write(self, data: dict) -> bool:
         tmp = self.path.with_suffix(".tmp")
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            tmp.write_text(json.dumps({"mode": normalize(mode, OFF)}), encoding="utf-8")
+            tmp.write_text(json.dumps(data), encoding="utf-8")
             os.replace(tmp, self.path)
             return True
         except OSError as e:
             log.warning("cannot save the sensor setting (%s): %s", self.path, e)
             return False
+
+    def load(self, default: str = BUILTIN) -> str:
+        return normalize(self._read().get("mode"), default)
+
+    def save(self, mode: str) -> bool:
+        data = self._read()
+        data["mode"] = normalize(mode, OFF)
+        return self._write(data)
+
+    def load_patch(self) -> Tuple[str, str]:
+        """설정 > 센서 에서 고른 패치 센서 (BLE 주소, 이름). 고르지 않았으면 ("", "")."""
+        data = self._read()
+        return str(data.get("patch_address") or "").strip(), str(data.get("patch_name") or "").strip()
+
+    def save_patch(self, address: str, name: str = "") -> bool:
+        data = self._read()
+        data["patch_address"], data["patch_name"] = address.strip(), name.strip()
+        return self._write(data)
 
 
 def make_transport(mode: str, cfg) -> Optional[Transport]:
@@ -66,6 +84,7 @@ def make_transport(mode: str, cfg) -> Optional[Transport]:
     if mode == PATCH:
         if cfg.uart_mock:
             return create_transport("", cfg.uart_baudrate, True)
+        from .ble_transport import BleNusTransport          # asyncio 가 들어 있어 패치 센서를 쓸 때만 불러온다
         return BleNusTransport(cfg.patch_address, cfg.patch_name)
     return None
 
