@@ -170,3 +170,55 @@ python poct_v18.py --input-csv example_V18_features.csv --output-csv predicted.c
 3. 단위·구간의 임상 해석 (50~1600 pg/mL가 NT-proBNP의 의사결정 구간을 덮는지, 컷오프)
 4. 보정 `selected_bias=0.95`의 의미(학습 중 선택된 편향 보정으로 추정)와 재학습 계획
 5. 모델 버전 관리(현재 `V18`) 및 향후 갱신 시 배포 방식
+
+## 11. 갱신 (2026-10-27) — NumPy 변환 패키지 수령
+
+> 위치: `refer/POCT_V18_NumPy_Ready_261027/poct_numpy/` (요청해서 다시 받은 NumPy 변환본)
+
+### 11.1 해결된 항목
+| 항목 | 상태 |
+|---|---|
+| 모델 가중치 | ✅ `v18_parameters.npz`(스케일러, 트리 120개, 로지스틱, 릿지, 게이트 NN 5개) + `v18_metadata.json`. §0·§4의 "읽지 못한 값"이 채워짐 |
+| Pi 추론 | ✅ `numpy_inference.py` — NumPy만 사용 (torch/sklearn 불필요). 예시 입력 → 211.77 pg/mL 로 오류 없이 동작 (이 PC에서 확인) |
+| 확인된 수치 | `direction_constant`=null, `magnitude_cap`=2.1998, `nf_logit_scale`=`f_logit_scale`=1.0, `selected_bias`=0.95, `training_ranges` 6개(메타데이터에 있음) |
+| 특징 정의 | ✅ `v18_exact_features.py` (§11.2) |
+
+### 11.2 확정된 특징량 정의
+| 특징 | 정의 |
+|---|---|
+| `HF_Zmag_mean` | 10,000~100,000Hz(양끝 포함) 구간 \|Z\|=sqrt(Re²+Im²)의 평균 |
+| `HF_Zmag_CV` | 같은 구간 \|Z\|의 표준편차(ddof=0) / (\|평균\|+1e-12) |
+| `logZratio_10k_1k` | ln((Z(10k)+1e-12)/(Z(1k)+1e-12)), 로그 주파수 거리가 가장 가까운 점 사용(보간 없음) |
+| `CPE_phase_difference_rad` | (Redox_n − Blood_n)·π/2 |
+| `log_CPE_Yratio_10Hz` | ln(max(Redox_Q,1e-12)) − ln(max(Blood_Q,1e-12)) + (Redox_n − Blood_n)·ln(2π·10) |
+| `delta_Rct_Ohm` | Redox_Rct(목표 농도) − Redox_Rct(**농도 0**), 같은 Sample 번호끼리 |
+
+- Blood_Q/Blood_n 은 Blood 피팅의 `LF_Branch`(2→Q2/n2, 3→Q3/n3)로 고른다. 그 외 값은 무효.
+- 이전 추정과 달라진 점: `delta_Rct` 는 반응 전후가 아니라 **농도 0 기준 키트와의 차이**. 따라서 기준(농도 0) 측정이 필요하다.
+
+### 11.3 추가된 보조 모델 (C6 + 구제 rescue)
+- `numpy_rescue_inference.py`(`V18C6Rescue`) + `v18_c6_rescue_parameters.npz/json`. 위상 특징 2개(`phase_30000Hz`, `HF_10k_100k_phase_mean`)로 보조 GBR(120 트리)을 돌린다.
+  - `phase_30000Hz`: 30kHz에 가장 가까운 점의 위상(°), `HF_10k_100k_phase_mean`: 10k~100kHz 위상 평균(°) (`atan2(Im,Re)`).
+- 구제 조건: 1차 예측이 50~1600 pg/mL 밖이거나, 매트릭스 특징의 최대 z > 1.60174 이면 `secondary_pg_mL`을 최종값으로 쓴다. 아니면 기존 V18 값.
+- 보정 근거는 과거 16건 + 신규 5건(샘플 3=100 pg/mL 한 점 기준)으로 **작다**. 연구용.
+
+### 11.4 남은 문제
+1. **등가회로 피팅 필요**: Redox(Rs,Rct,Q,n,Aw) / Blood(R1,R2,Q2,n2,R3,Q3,n3)를 `scipy.curve_fit`으로 피팅해야 CPE·Rct 3개 특징이 나온다. `eis_fit_bridge.py`가 근사 구현이나 README가 "원래 전체 피팅 과정이 아님"이라 밝힌다. **LF_Branch 선택 규칙은 코드에 없다.** Pi에 scipy(`python3-scipy`) 필요.
+2. **측정 단계**: Blood 스펙트럼 + Redox 스펙트럼 + Redox 농도 0 기준이 모두 필요 → 프로토콜 확정 필요.
+3. **입력 형식**: 학습은 `B농도-샘플-Re/Im` 열. 장비 출력(SHORT 보정 후 R/X)과 같은 기준인지 확인 필요.
+4. **검증**: 원래 PyTorch 게이트 ↔ NumPy 게이트 일치는 **미검증**(README 명시). 실측 검증 샘플(요청 R4)도 패키지에 없음. 구제 모델은 NumPy ↔ 보정된 sklearn 재구성과는 5건에서 일치.
+5. 학습·재보정 스크립트(`v18_rescue_c6.py`)는 pandas/sklearn/joblib 이 필요한 PC 전용이다.
+
+### 11.5 앱 연동 (연구개발용, 2026-10-27)
+- 코드 `app/models/ntprobnp.py`, 가중치 `app/models/ntprobnp_v18/`, 시험 `tests/test_ntprobnp.py`(변환본 `numpy_rescue_inference` 와 무작위 입력 20건 비교 포함).
+- 선택: `config.ini [measure] assay = ntprobnp` (기본 `troponin`). 표시 이름·단위는 `[result] title = NT-proBNP`, `unit = pg/mL` 로 따로 설정.
+- 측정은 Troponin 과 같은 3단계, 단계마다 센서 0·1·2 (사용자 확인). 대응(**추정**):
+  | 단계 | 모델 입력 |
+  |---|---|
+  | 0 시료준비 | 농도 0 redox 기준 (delta_Rct 기준) |
+  | 1 혈액투입 | Blood 스펙트럼 (HF/비율/위상 특징 + Blood 피팅) |
+  | 2 세척후 검증 | 목표 redox 스펙트럼 (Redox 피팅) |
+  센서 3개 곡선은 복소 평균해 한 곡선으로 합친다(별도 이상치 제거 없음).
+- 정량 범위(50–1600 pg/mL) 밖이면 값을 숨기고 QC 불합격(계산값은 result.json `details.raw_value`). 모든 결과에 "연구개발용" 경고가 붙는다.
+- Pi 에는 `python3-scipy` 가 추가로 필요하다(피팅에만 사용, 해당 단계에서 지연 import).
+- 위 대응과 LF_Branch 선택(시정수 기준 추정)은 실측 검증 전이다.

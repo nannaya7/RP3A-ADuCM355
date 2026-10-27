@@ -178,3 +178,25 @@ PC에서 **원본 `poct_v18.py`** 와 **numpy 포팅** 결과를 비교한다.
 점(주파수)마다 다음 값을 받을 수 있다 (SHORT 보정 후): `FREQ_HZ`, `MAG_OHM`, `PHASE_DEG`, `R_OHM`, `X_OHM`, 원시 DFT `Z_REAL/Z_IMAG`, `TEMP_C`, `HUM_RH`, `STATUS(OK/SAT)`. 선택적으로 DC 전류(`#D`)와 시간-전류(`#T`)도 가능하다. 상세는 [uart_protocol.md](uart_protocol.md) 참조.
 
 특징 추출이 위 값 이외(예: 시간-전류 곡선, 원시 DFT)를 필요로 하면 알려 달라.
+
+## 9. 진행 상황 (2026-10-27)
+
+NumPy 변환본(`refer/POCT_V18_NumPy_Ready_261027`)을 받았다. 상세는 [model_nt_probnp_v18.md](model_nt_probnp_v18.md) §11.
+
+| ID | 상태 | 비고 |
+|---|---|---|
+| R1 특징 추출 | 🔶 부분 | 6개 정의는 확정. 등가회로 피팅 전체 과정과 Blood LF_Branch 선택 규칙은 없음 |
+| R2 측정 프로토콜 | ❌ | Blood/Redox/농도 0 기준 단계 구성은 필요함을 확인, 시간·채널·스윕은 미정 |
+| R3 반복 집계 | ❌ | 미확인 |
+| R4 검증 샘플 | ❌ | 패키지에 없음 (원본 엑셀 3종은 따로 있음) |
+| R5 해시·변환 허락 | ✅ | 변환본 수령으로 해소 (원본 해시는 미기록) |
+| R6 모델 수치 | ✅ | `v18_parameters.npz` + `v18_metadata.json` |
+| R7 표시 기준 | ❌ | 미확인 (구제 로직의 `rescue` 플래그 표시 방법 포함) |
+| R8, R9 | ❌ | 미확인 |
+
+새로 생긴 질문:
+1. Blood 피팅의 `LF_Branch`(2/3)를 고르는 규칙과 피팅 초기값·경계·주파수 구간의 원본.
+2. 키트 1개에서 Blood·Redox·농도 0 기준 측정을 어떻게 얻는가(단계, 채널).
+3. 장비의 SHORT 보정 후 R/X 가 학습 데이터(Re/Im)와 같은 기준인가.
+4. C6 구제 모델을 배포에 포함할지, `rescue` 결과를 어떻게 표시할지.
+5. PyTorch ↔ NumPy 게이트 일치 검증 결과.

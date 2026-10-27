@@ -101,6 +101,38 @@ def test_startup_check_reaches_ready_and_reads_module_info(rig):
     assert [s.ch for s in v.sensors] == [0, 1, 2]
 
 
+class EnvOnlyFirmware(MockFirmware):
+    """ENV 에만 답하는 모듈 (STATUS/CALSTATUS 는 응답 없음)."""
+
+    def _cmd_status(self, w) -> None:
+        pass
+
+    def _cmd_calstatus(self, w) -> None:
+        pass
+
+
+class EnvWarnFirmware(MockFirmware):
+    """온습도 센서(HDC2010)가 없어 ENV 에 'not available' 경고로 답하는 모듈."""
+
+    def _cmd_env(self, w) -> None:
+        self._info("WARN", "ENV not available (sensor not found)")
+
+
+class SilentEnvFirmware(MockFirmware):
+    def _cmd_env(self, w) -> None:
+        pass
+
+
+def test_module_check_uses_env_and_status_is_only_informational():
+    for cls, expect in ((EnvOnlyFirmware, State.READY), (EnvWarnFirmware, State.READY), (SilentEnvFirmware, State.NO_MODULE)):
+        r = Rig(fw=cls(point_interval=0.0002), settings=MeasureSettings(c0_source="none"))
+        try:
+            r.to_state(expect)
+            assert r.fw.sent_lines[0] == "ENV"                       # 모듈 확인은 ENV 가 먼저
+        finally:
+            r.close()
+
+
 def test_full_three_stage_flow_with_user_accepts_and_reaction_timer(rig):
     rig.to_state(State.READY)
 

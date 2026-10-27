@@ -58,6 +58,9 @@ class UartWorker(QObject):
         """전송 장치를 바꾼다 (스레드 안전). 연결 중이면 닫고 새 장치로 다시 연결한다. None = 연결 안 함."""
         with self._lock:
             self._pending = (transport,)
+        cancel = getattr(self._transport, "cancel", None)      # 연결하는 중이면 기다리지 않고 중단시킨다
+        if callable(cancel):
+            cancel()
         self._wake.set()
 
     @property
@@ -102,8 +105,9 @@ class UartWorker(QObject):
                 try:
                     t.open()
                 except OSError as e:
-                    self.errorOccurred.emit(f"{t.name} 열기 실패: {e}")
-                    self._sleep(RECONNECT_INTERVAL)
+                    if self._pending is None:                  # 장치를 바꾸려고 중단한 것이면 오류로 알리지 않는다
+                        self.errorOccurred.emit(f"{t.name} 열기 실패: {e}")
+                        self._sleep(RECONNECT_INTERVAL)
                     continue
                 if self._pending is not None:           # 여는 동안 장치가 바뀌었다
                     try:

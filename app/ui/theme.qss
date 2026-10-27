@@ -129,6 +129,9 @@ QProgressBar#netBusy { background: #CFE3D9; border: none; border-radius: 2px; }
 QProgressBar#netBusy::chunk { background: #2FAF87; border-radius: 2px; }
 #devList { background: #FFFFFF; border-radius: 14px; border: none; outline: none; }
 #devList::item { background: transparent; }
+#patchList { background: #F5F9F7; border-radius: 12px; border: 1px solid #DDE8E2; outline: none; font-size: 14px; }
+#patchList::item { padding: 8px 12px; border-bottom: 1px solid #E3EDE8; color: #1F2D27; }
+#patchList::item:selected { background: #D6F0E5; color: #1D7A5A; }
 #devDetail { background: #FFFFFF; border-radius: 14px; }
 #sensorState { font-size: 14px; font-weight: 600; color: #8A9A93; }
 #sensorState[level="ok"] { color: #1D7A5A; }

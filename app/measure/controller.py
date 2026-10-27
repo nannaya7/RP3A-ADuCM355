@@ -4,7 +4,7 @@ UI 는 `viewChanged(ViewState)` 를 받아 그리기만 하고, 버튼은 아래
     primary()  주 버튼(상태에 따라 시작/재시도/새 측정)    stop()  중지    restart()  처음부터
 
 흐름 (Troponin, 화면 단계명 시료준비 → 혈액투입 → 세척후 검증 = 내부 T0 → T1 → T2):
-    확인(STATUS/CALSTATUS/ENV) → READY → [측정 시작] → 센서 0,1,2 측정(START 1) → 단계 완료
+    확인(ENV 응답으로 모듈 확인, STATUS/CALSTATUS 는 정보) → READY → [측정 시작] → 센서 0,1,2 측정(START 1) → 단계 완료
     → (혈액투입 단계는 반응 대기 타이머가 끝나야 버튼 활성) → [측정 시작] → … → [측정 시작] → … → 계산 → 결과
 각 단계는 사용자가 수락(버튼)해야 시작된다. 자동 진행은 StageDef.auto_start 로만 켠다.
 """
@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 class State:
     DISCONNECTED = "disconnected"   # 포트 연결 안 됨
     CHECKING = "checking"           # 모듈 확인 중
-    NO_MODULE = "no_module"         # 연결은 됐지만 모듈이 STATUS 에 응답하지 않음
+    NO_MODULE = "no_module"         # 연결은 됐지만 모듈이 ENV 에 응답하지 않음
     READY = "ready"                 # 단계 시작 대기 (반응 대기 타이머가 돌 수 있음)
     CONFIGURING = "configuring"     # SWEEP/CHAN/VERB/START 전송 중
     MEASURING = "measuring"
@@ -106,6 +106,7 @@ class MeasureController(QObject):
         self.store = store
         self._clock = clock
         self.patient: dict = {}             # 환자 프로필 (화면이 채운다). 결과 파일에 함께 저장
+        self.assay = "troponin"             # 계산 모델: troponin | ntprobnp (config.ini [measure] assay)
         self.meta: dict = {}                # 결과 표시 정보 (title, unit, ref_low, ref_high). 이력 판정에 쓴다
 
         self._state = State.DISCONNECTED
@@ -195,8 +196,9 @@ class MeasureController(QObject):
             return
         self._set_state(State.CHECKING)
         self._set_banner("모듈을 확인하는 중입니다…", "info")
-        self._run_chain([p.CMD_STATUS, p.CMD_CALSTATUS, p.CMD_ENV], self._check_done, self._check_failed,
-                        tolerant=(p.CMD_CALSTATUS, p.CMD_ENV))
+        # 모듈이 살아 있는지는 ENV 응답으로 확인한다 ("ENV not available" 도 응답이므로 살아 있는 것). 나머지는 정보용.
+        self._run_chain([p.CMD_ENV, p.CMD_STATUS, p.CMD_CALSTATUS], self._check_done, self._check_failed,
+                        tolerant=(p.CMD_STATUS, p.CMD_CALSTATUS))
 
     def _check_done(self) -> None:
         cal = self.client.cal_status
@@ -339,8 +341,12 @@ class MeasureController(QObject):
     @property
     def model(self) -> "TroponinModel":
         if self._model is None:
-            from app.models.troponin import TroponinModel
-            self._model = TroponinModel()
+            if self.assay == "ntprobnp":
+                from app.models.ntprobnp import NtProBnpModel
+                self._model = NtProBnpModel()
+            else:
+                from app.models.troponin import TroponinModel
+                self._model = TroponinModel()
         return self._model
 
     @model.setter
@@ -357,7 +363,6 @@ class MeasureController(QObject):
         return out
 
     def _compute(self) -> None:
-        from app.models.troponin import TroponinInputError
         self._set_state(State.COMPUTING)
         try:
             names = {"t2": [f"센서{c}" for c in self.settings.channels]}
@@ -368,7 +373,7 @@ class MeasureController(QObject):
             res = self.model.predict(self._curves(0), self._curves(1), self._curves(2), c0,
                                      elapsed_min=self.settings.elapsed_min,
                                      rtia_ohm=self.settings.rtia_ohm, names=names)
-        except TroponinInputError as e:
+        except ValueError as e:                       # TroponinInputError / NtProBnpInputError
             self._error_kind = "compute"
             self._set_banner(f"계산할 수 없습니다: {e} 마지막 단계를 다시 측정하세요.", "error")
             if self.store:
@@ -405,8 +410,9 @@ class MeasureController(QObject):
             "stages": {self.stages[i].key: {"code_name": self.stages[i].code_name,
                                             "counts": {ch: len(v) for ch, v in d.items()}}
                        for i, d in self._done.items()},
-            "result": {"value": res.value, "unit": None, "qc_pass": res.qc_pass, "D": res.d, "B": res.b,
-                       "score": res.score, "clipped": res.clipped, "loocv_mae": res.day1_loocv_mae,
+            "result": {"value": res.value, "unit": None, "qc_pass": res.qc_pass, "D": getattr(res, "d", None), "B": getattr(res, "b", None),
+                       "score": getattr(res, "score", None), "clipped": getattr(res, "clipped", False),
+                       "loocv_mae": getattr(res, "day1_loocv_mae", None),
                        "warnings": res.warnings, "details": res.details},
             "curves": {self.stages[i].key: {str(ch): [[r.freq_hz, r.mag_ohm, r.phase_deg, r.r_ohm, r.x_ohm,
                                                        r.status] for r in recs] for ch, recs in d.items()}
@@ -428,7 +434,8 @@ class MeasureController(QObject):
         ch = self._chain
         if ch is None or ch["i"] >= len(ch["cmds"]) or text != ch["cmds"][ch["i"]]:
             return
-        if not ok and text not in ch["tolerant"]:
+        alive = ok or (text == p.CMD_ENV and msg.startswith("ENV not available"))     # 센서가 없다는 답도 모듈의 응답
+        if not alive and text not in ch["tolerant"]:
             self._chain = None
             ch["fail"](f"{text.split()[0]}: {msg}")
             return

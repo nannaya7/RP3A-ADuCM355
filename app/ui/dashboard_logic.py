@@ -170,7 +170,7 @@ def result_view(cfg, v: ViewState, wait_seen: int, finished_at: Optional[datetim
         warn = r.warnings[0] if r.warnings else ""
         out.note = "QC 불합격: 결과를 표시하지 않습니다. 마지막 단계를 다시 측정하세요." + (f"\n{warn}" if warn else "")
     else:
-        out.note = "QC 통과" + (" · 모델 범위 상한으로 제한됨" if r.clipped else "")
+        out.note = "QC 통과" + (" · 모델 범위 상한으로 제한됨" if getattr(r, "clipped", False) else "")
         status = classify(r.value, cfg.ref_low, cfg.ref_high)
         if status in ("정상", "주의"):
             out.status_text = ("✓ " if status == "정상" else "! ") + status

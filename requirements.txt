@@ -11,3 +11,6 @@ numpy
 # 개발용(테스트): 원본 Troponin 코드와의 패리티 테스트가 pandas 를 쓴다. Pi 에는 필요 없다.
 # pytest
 # pandas
+
+# NT-proBNP(app/models/ntprobnp.py) 등가회로 피팅 — assay = ntprobnp 일 때만 필요. Pi 는 apt 의 python3-scipy
+scipy

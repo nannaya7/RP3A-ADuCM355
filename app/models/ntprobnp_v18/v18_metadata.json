@@ -1,0 +1,87 @@
+{
+  "artifact_version": "V18_AdditivePhysicsModulated_SoftGate_Deployment_v1",
+  "matrix_features": [
+    "HF_Zmag_mean",
+    "HF_Zmag_CV"
+  ],
+  "nf_features": [
+    "log_CPE_Yratio_10Hz",
+    "CPE_phase_difference_rad",
+    "logZratio_10k_1k"
+  ],
+  "f_features": [
+    "delta_Rct_Ohm"
+  ],
+  "all_features": [
+    "HF_Zmag_mean",
+    "HF_Zmag_CV",
+    "log_CPE_Yratio_10Hz",
+    "CPE_phase_difference_rad",
+    "logZratio_10k_1k",
+    "delta_Rct_Ohm"
+  ],
+  "candidate_state_columns": [
+    "Primary_Log",
+    "P_UP",
+    "Direction_Confidence",
+    "Predicted_Magnitude_Log",
+    "Candidate_Delta_Log",
+    "Abs_Candidate_Delta_Log"
+  ],
+  "deploy_min_conc": 50.0,
+  "deploy_max_conc": 1600.0,
+  "selected_bias": 0.95,
+  "magnitude_cap": 2.199847747977593,
+  "nf_logit_scale": 1.0,
+  "f_logit_scale": 1.0,
+  "direction_constant": null,
+  "training_ranges": {
+    "HF_Zmag_mean": {
+      "min": 144.6721479980501,
+      "max": 165.3477959672477,
+      "mean": 152.42446252774226,
+      "sd": 5.667574218706682
+    },
+    "HF_Zmag_CV": {
+      "min": 0.1960350671697802,
+      "max": 0.2246322651821435,
+      "mean": 0.2059837727918813,
+      "sd": 0.007092549228072919
+    },
+    "log_CPE_Yratio_10Hz": {
+      "min": 0.1593979112326851,
+      "max": 0.7035755967662468,
+      "mean": 0.3664958133381485,
+      "sd": 0.1547340467164739
+    },
+    "CPE_phase_difference_rad": {
+      "min": 0.01751061834447623,
+      "max": 0.1015919201591727,
+      "mean": 0.051843761706316674,
+      "sd": 0.02144406976001689
+    },
+    "logZratio_10k_1k": {
+      "min": -1.341178142800925,
+      "max": -1.165987813831381,
+      "mean": -1.226511233745992,
+      "sd": 0.0435231339554707
+    },
+    "delta_Rct_Ohm": {
+      "min": -37857.19772492599,
+      "max": 11912.4384936783,
+      "mean": -12450.288048689381,
+      "sd": 14861.510077410729
+    }
+  },
+  "encoder_seeds": [
+    11,
+    29,
+    47,
+    71,
+    101
+  ],
+  "n_trees": 120,
+  "tree_learning_rate": 0.03,
+  "gate_count": 5,
+  "source_sklearn_version": "1.7.0"
+}

@@ -76,7 +76,7 @@ class AppWindow(QStackedWidget):
         self._link_error = ""
         self._link_up = False
         self._probe = None                                    # 패치 센서를 켜는 중이면 진행 정보
-        self.probe_timeout_s = 20.0                           # 포트 열기 + STATUS 응답을 기다리는 최대 시간
+        self.probe_timeout_s = 20.0                           # 포트 열기 + ENV 응답을 기다리는 최대 시간
         self._patch_sel = self.sensor_store.load_patch()      # 설정 > 센서 에서 고른 패치 센서 (주소, 이름). 없으면 config.ini 기준
         self.worker = UartWorker(make_transport(self.sensor_mode, self._sensor_cfg()))
         self.client = FirmwareClient(self.worker)
@@ -85,6 +85,7 @@ class AppWindow(QStackedWidget):
         self.controller = MeasureController(
             self.client, self._measure_settings(cfg), troponin_stages(cfg.reaction_wait_s, cfg.auto_start_last),
             store=SessionStore(results if results.is_absolute() else root / results))
+        self.controller.assay = cfg.assay if cfg.assay in ("troponin", "ntprobnp") else "troponin"
         self.traffic = TrafficLog(self.worker)                  # 앱이 켜져 있는 동안 UART 송수신을 계속 기록한다
         self.monitor = MonitorPage(self.traffic, portrait=profile.is_portrait,
                                    save_dir=results if results.is_absolute() else root / results)
@@ -216,6 +217,10 @@ class AppWindow(QStackedWidget):
 
     def _on_sensor_mode(self, mode: str) -> None:
         mode = normalize(mode, OFF)
+        if self._probe is not None:                                 # 패치 센서에 연결하는 중
+            if mode == PATCH:
+                return
+            self._cancel_probe()                                    # 끄면 연결을 중단한다
         why = self._sensor_switch_blocked()
         if why:
             self.settings.sensor.show_msg(why, "error")
@@ -231,9 +236,9 @@ class AppWindow(QStackedWidget):
         names = {PATCH: "패치 센서", BUILTIN: "내장 센서"}
         self.settings.sensor.show_msg(f"{names[mode]}를 켰습니다." if mode in names else "센서를 모두 껐습니다.")
 
-    # ---- 패치 센서 켜기: 연결 → STATUS 조회 → 응답이 있으면 확정, 없으면 되돌리고 팝업 ----
+    # ---- 패치 센서 켜기: 연결 → ENV 조회 → 응답이 있으면 확정, 없으면 되돌리고 팝업 ----
     def _probe_patch(self) -> None:
-        """패치 센서 연결로 바꾸고 컨트롤러의 모듈 확인(STATUS/CALSTATUS/ENV)이 끝나기를 기다린다.
+        """패치 센서 연결로 바꾸고 컨트롤러의 모듈 확인(ENV, STATUS, CALSTATUS)이 끝나기를 기다린다.
         응답(READY)이면 켜진 것으로 저장하고, 포트가 안 열리거나 모듈이 응답하지 않으면 이전 센서로 되돌린다."""
         self._probe = {"prev": self.sensor_mode, "t0": time.monotonic(), "restarted": False}
         self._link_up = False                                         # 새 연결이 올라온 뒤의 상태만 본다
@@ -258,6 +263,11 @@ class AppWindow(QStackedWidget):
                 return self._probe_done(False)
         if time.monotonic() - pr["t0"] > self.probe_timeout_s:        # 포트가 안 열리거나 확인이 끝나지 않음
             self._probe_done(False)
+
+    def _cancel_probe(self) -> None:
+        self._probe = None
+        self._probe_timer.stop()
+        self.settings.sensor.set_locked(False)
 
     def _probe_done(self, ok: bool) -> None:
         pr, self._probe = self._probe, None
@@ -369,7 +379,7 @@ class AppWindow(QStackedWidget):
         up = self._link_up and on
         detail = describe(self.sensor_mode, self._sensor_cfg()) if on else ""
         checking = False
-        if up:                                                        # 포트가 열려도 모듈이 STATUS 에 응답해야 '연결됨'
+        if up:                                                        # 포트가 열려도 모듈이 ENV 에 응답해야 '연결됨'
             st = self.controller.state
             if st == State.CHECKING:
                 checking = True
@@ -453,6 +463,11 @@ class AppWindow(QStackedWidget):
             page = self.currentWidget()
             color = BG_BLUE if page is not None and page.objectName() in BLUE_PAGES else BG_DEFAULT
             QPainter(self).fillRect(0, self.height() - self._bottom_safe, self.width(), self._bottom_safe, color)
+
+    def closeEvent(self, e) -> None:
+        for t in (self._start_timer, self._healthy_timer):       # 닫힌 창에서 늦게 울려 지워진 객체를 건드리지 않게 한다
+            t.stop()
+        super().closeEvent(e)
 
     def resizeEvent(self, e) -> None:
         super().resizeEvent(e)

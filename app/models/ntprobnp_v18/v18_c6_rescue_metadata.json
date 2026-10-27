@@ -1,0 +1,22 @@
+{
+  "c6_bias": 0.1,
+  "c6_learning_rate": 0.03,
+  "c6_n_trees": 120,
+  "maxz_threshold": 1.6017417682046697,
+  "deploy_min_conc": 50.0,
+  "deploy_max_conc": 1600.0,
+  "anchor_sample": 3,
+  "anchor_concentration_pg_mL": 100.0,
+  "excluded_new_concentration_pg_mL": [
+    800.0
+  ],
+  "raw_channel_prefix": "B",
+  "secondary_features": [
+    "phase_30000Hz",
+    "HF_10k_100k_phase_mean"
+  ],
+  "matrix_features": [
+    "HF_Zmag_mean",
+    "HF_Zmag_CV"
+  ]
+}

@@ -32,6 +32,7 @@ class Config:
     channels: str = "0,1,2"
     rtia_ohm: float = 1000.0
     elapsed_min: Optional[float] = None
+    assay: str = "troponin"           # 계산 모델: troponin | ntprobnp (연구개발용)
     c0_source: str = "first"          # first: c0 = 첫 측정(센서 0·1·2) 결과 | none: 과거 Day-1 기준값
     results_dir: str = "results"
     require_patient: bool = True      # true: 환자 프로필 필수 항목(성명/성별/나이/몸무게)을 채워야 첫 단계를 시작할 수 있다
@@ -89,6 +90,7 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
         channels=cp.get("measure", "channels", fallback=d.channels).strip(),
         rtia_ohm=cp.getfloat("measure", "rtia_ohm", fallback=d.rtia_ohm),
         elapsed_min=_opt_float(cp.get("measure", "elapsed_min", fallback="")),
+        assay=cp.get("measure", "assay", fallback=d.assay).strip().lower(),
         c0_source=cp.get("measure", "c0_source", fallback=d.c0_source).strip().lower(),
         results_dir=cp.get("measure", "results_dir", fallback=d.results_dir).strip(),
         require_patient=cp.getboolean("measure", "require_patient", fallback=d.require_patient),

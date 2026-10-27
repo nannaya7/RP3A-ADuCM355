@@ -226,6 +226,109 @@ def test_scan_keeps_only_patch_candidates_strongest_first(monkeypatch):
     assert [f.address for f in found] == ["AA:02", "AA:04", "AA:01"]        # 키보드는 빠지고 신호가 센 순
 
 
+def test_open_can_be_cancelled_and_the_ble_loop_is_shared(monkeypatch):
+    import threading
+    import types
+    from app.comm import ble_transport as bt
+
+    class HangingScanner:                                           # 아무것도 찾지 못한 채 계속 검색하는 중
+        def __init__(self, detection_callback):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setitem(sys.modules, "bleak", types.SimpleNamespace(BleakScanner=HangingScanner))
+    t = BleNusTransport("", "nFor", scan_timeout=30.0)
+    err = []
+
+    def run():
+        try:
+            t.open()
+        except OSError as e:
+            err.append(e)
+
+    th = threading.Thread(target=run)
+    start = time.monotonic()
+    th.start()
+    time.sleep(0.4)
+    t.cancel()                                                      # 센서를 끄면 연결하는 중이라도 바로 멈춘다
+    th.join(5.0)
+    assert not th.is_alive() and err and time.monotonic() - start < 5.0
+    loop = bt.shared_loop()
+    assert loop is bt.shared_loop() and loop.is_running()           # 닫아도 BLE 루프는 계속 쓴다 (두 번째 연결도 되도록)
+
+
+def test_connect_button_turns_the_patch_sensor_on_and_off(tmp_path):
+    win = make_window(tmp_path, PORTRAIT)
+    try:
+        sp = win.settings.sensor
+        assert sp.connect_btn.text() == "연결"
+        sp.connect_btn.click()
+        wait(lambda: win.sensor_mode == PATCH and win._probe is None, 6000)
+        assert sp.connect_btn.text() == "연결 해제" and sp.patch.switch.isChecked()
+        sp.connect_btn.click()
+        assert win.sensor_mode == OFF and sp.connect_btn.text() == "연결" and not sp.patch.switch.isChecked()
+    finally:
+        win.shutdown()
+
+
+def test_turning_off_while_connecting_cancels_without_a_popup(tmp_path, monkeypatch):
+    win = make_window(tmp_path, PORTRAIT)
+    use_patch_transport(monkeypatch, SilentTransport("BT-silent"))
+    popups = []
+    monkeypatch.setattr(win, "notify", popups.append)
+    try:
+        win.settings.sensor.connect_btn.click()                     # 모듈이 응답하지 않아 확인하는 중
+        assert win._probe is not None and win.settings.sensor.connect_btn.text() == "연결 해제"
+        assert win.settings.sensor.connect_btn.isEnabled() and win.settings.sensor.patch.switch.isEnabled()
+        win.settings.sensor.connect_btn.click()                     # 연결 해제 = 중단
+        assert win._probe is None and win.sensor_mode == OFF
+        assert not win.settings.sensor.builtin.switch.isChecked() and win.settings.sensor.builtin.switch.isEnabled()
+        QTest.qWait(300)
+        assert popups == []
+    finally:
+        win.shutdown()
+
+
+def test_not_found_error_lists_what_was_seen_around(monkeypatch):
+    import asyncio
+    import types
+    t = BleNusTransport("", "nFor", scan_timeout=0.2)
+
+    class FakeScanner:
+        def __init__(self, detection_callback):
+            self.cb = detection_callback
+
+        async def __aenter__(self):
+            d = types.SimpleNamespace(name="Keyboard", address="AA:01")
+            self.cb(d, types.SimpleNamespace(rssi=-50, local_name=None, service_uuids=[]))
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setitem(sys.modules, "bleak", types.SimpleNamespace(BleakScanner=FakeScanner))
+    with pytest.raises(OSError) as ei:
+        asyncio.run(t._find())
+    assert "찾지 못함" in str(ei.value) and "Keyboard(-50dBm)" in str(ei.value)       # 무엇이 보였는지 알려 준다
+
+
+def test_picked_sensor_is_marked_in_the_list():
+    from app.ui.sensor_panel import SensorPanel
+    s = SensorPanel()
+    s.set_found([("nFor20-t01", "AA:01", -60), ("nFor20-t02", "AA:02", -70)])
+    s.set_picked("AA:02", "nFor20-t02")
+    assert s.found.item(0).text() == "nFor20-t01    -60 dBm"
+    assert s.found.item(1).text().startswith("✓ ") and s.found.item(1).font().bold()
+    assert "AA:02" not in s.found.item(1).text() and "AA:02" not in s.picked.text()          # 주소는 보이지 않는다
+    s.set_picked("", "")
+    assert not s.found.item(1).text().startswith("✓ ")
+
+
 def test_app_connects_to_the_chosen_patch_sensor(tmp_path):
     win = make_window(tmp_path, PORTRAIT)
     try:

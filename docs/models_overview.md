@@ -14,7 +14,7 @@
 | Troponin 스윕 | **10Hz ~ 200kHz, 101점 로그 격자 — 확정** (이전 추정이 맞음) |
 | Troponin 농도 단위 | 사용자가 **별도 확인 예정** (미정) |
 | 구현 방식 | **두 모델 모두 가중치를 추출해 numpy로 추론** (Pi에 torch/scikit-learn 설치 안 함) — 확정 |
-| NT-proBNP 요청 사항 | [request_nt_probnp.md](request_nt_probnp.md)로 정리 (모델 담당자에게 전달용) |
+| NT-proBNP 요청 사항 | [request_nt_probnp.md](request_nt_probnp.md)로 정리 (모델 담당자에게 전달용). 2026-10-27 NumPy 변환본 수령 → [model_nt_probnp_v18.md](model_nt_probnp_v18.md) §11 |
 
 ### 0.05 센서 어레이 (사용자 확인, 2026-10-24)
 

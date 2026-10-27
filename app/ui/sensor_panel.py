@@ -118,14 +118,15 @@ class SensorPanel(QWidget):
         col.setContentsMargins(*((18, 14, 18, 14) if portrait else (24, 18, 24, 18)))
         col.setSpacing(6)
         col.addWidget(QLabel("패치 센서 선택", objectName="devTitle"))
-        self.picked = QLabel("", objectName="devInfo", wordWrap=True)
+        self.picked = QLabel("", objectName="sensorState", wordWrap=True)
         col.addWidget(self.picked)
 
-        self.found = QListWidget(objectName="devList")
+        self._picked_addr = ""
+        self.found = QListWidget(objectName="patchList")
         self.found.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.found.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.found.setFocusPolicy(Qt.NoFocus)
-        self.found.setFixedHeight(120 if portrait else 110)
+        self.found.setFixedHeight(150 if portrait else 130)
         self.found.itemClicked.connect(self._on_found_clicked)
         self.found.hide()
         col.addWidget(self.found)
@@ -141,17 +142,46 @@ class SensorPanel(QWidget):
         self.scan_btn.clicked.connect(self.scanRequested)
         self.clear_btn.clicked.connect(self.patchCleared)
         col.addLayout(row)
+
+        self.connect_btn = QPushButton("연결", objectName="primaryBtn")     # 켜져 있으면(연결 중 포함) "연결 해제"
+        self.connect_btn.setFocusPolicy(Qt.NoFocus)
+        self.connect_btn.setFixedHeight(52 if portrait else 56)
+        self.connect_btn.clicked.connect(lambda: self._request(PATCH, self._mode != PATCH))
+        col.addWidget(self.connect_btn)
         self.set_picked("", "")
         return card
 
     # ---- 패치 센서 선택 ----
     def set_picked(self, address: str, name: str) -> None:
+        self._picked_addr = address
         if address:
-            self.picked.setText(f"선택한 센서: {name or '(이름 없음)'} · {address}")
+            self.picked.setText(f"✓ 선택한 센서: {name or address}")
         else:
             self.picked.setText("선택 안 함 — 이름이 nFor 로 시작하는 장치에 자동으로 연결합니다.\n"
                                 "센서가 여러 대이면 [검색]으로 찾아 하나를 고르세요.")
+        self.picked.setProperty("level", "ok" if address else "off")
+        self.picked.style().unpolish(self.picked)
+        self.picked.style().polish(self.picked)
         self.clear_btn.setEnabled(bool(address))
+        self._mark_picked()
+
+    def _mark_picked(self) -> None:
+        """목록에서 선택한 센서에 ✓ 와 배경색을 표시한다."""
+        for i in range(self.found.count()):
+            it = self.found.item(i)
+            address, name = it.data(Qt.UserRole)
+            mine = bool(self._picked_addr) and address.upper() == self._picked_addr.upper()
+            it.setText(("✓ " if mine else "") + self._item_text(it))
+            it.setBackground(QColor("#D6F0E5") if mine else QColor(0, 0, 0, 0))
+            f = it.font()
+            f.setBold(mine)
+            it.setFont(f)
+            if mine:
+                self.found.setCurrentItem(it)                       # 선택 배경색(초록)도 함께 보이게
+
+    @staticmethod
+    def _item_text(it: QListWidgetItem) -> str:
+        return it.data(Qt.UserRole + 1)
 
     def set_scanning(self, busy: bool) -> None:
         self.scan_btn.setEnabled(not busy and not self._locked)
@@ -161,9 +191,12 @@ class SensorPanel(QWidget):
         """devices: (이름, 주소, rssi) 목록. 비어 있으면 목록을 숨긴다."""
         self.found.clear()
         for name, address, rssi in devices:
-            it = QListWidgetItem(f"{name or '(이름 없음)'}\n{address}" + (f"   {rssi} dBm" if rssi is not None else ""))
+            text = (name or "(이름 없음)") + (f"    {rssi} dBm" if rssi is not None else "")
+            it = QListWidgetItem(text)
             it.setData(Qt.UserRole, (address, name))
+            it.setData(Qt.UserRole + 1, text)
             self.found.addItem(it)
+        self._mark_picked()
         self.found.setVisible(self.found.count() > 0)
 
     def _on_found_clicked(self, item: QListWidgetItem) -> None:
@@ -186,9 +219,9 @@ class SensorPanel(QWidget):
         self._sync()
 
     def set_locked(self, locked: bool) -> None:
+        """패치 센서에 연결하는 중. 내장 센서 전환과 검색만 막고, 패치 센서는 끄기(연결 해제)로 중단할 수 있다."""
         self._locked = locked
-        for c in (self.patch, self.builtin):
-            c.switch.setEnabled(not locked)
+        self.builtin.switch.setEnabled(not locked)
         self.scan_btn.setEnabled(not locked)
 
     def show_msg(self, text: str, level: str = "ok") -> None:
@@ -222,3 +255,4 @@ class SensorPanel(QWidget):
     def _sync(self) -> None:
         for which, card in ((PATCH, self.patch), (BUILTIN, self.builtin)):
             card.show_state(*self._state_text(which))
+        self.connect_btn.setText("연결 해제" if self._mode == PATCH else "연결")
