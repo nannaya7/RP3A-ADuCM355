@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal
-from PyQt5.QtWidgets import (QFrame, QHBoxLayout, QLabel, QMessageBox, QProgressBar, QPushButton, QScrollArea,
+from PyQt5.QtWidgets import (QFrame, QHBoxLayout, QLabel, QProgressBar, QPushButton, QScrollArea,
                              QScroller, QSizePolicy, QVBoxLayout, QWidget)
 
 from app.measure.controller import MeasureController, State, ViewState

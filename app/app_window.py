@@ -5,7 +5,7 @@ import time
 
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QColor, QPainter
-from PyQt5.QtWidgets import QApplication, QLayout, QMessageBox, QStackedWidget, QWidget
+from PyQt5.QtWidgets import QApplication, QLayout, QStackedWidget, QWidget
 
 from pathlib import Path
 
@@ -360,8 +360,7 @@ class AppWindow(QStackedWidget):
 
     def notify(self, text: str) -> None:
         """사용자에게 알리는 팝업 (확인 버튼 하나)."""
-        box = QMessageBox(QMessageBox.Information, "센서", text, QMessageBox.Ok, self)
-        box.exec_()
+        dialogs.notify(self, text)
 
     def set_sensor_mode(self, mode: str, persist: bool = True) -> None:
         """센서를 바꾼다(persist 이면 저장도). 워커가 이전 연결을 닫고 새 장치로 다시 연결한다."""
@@ -565,7 +564,7 @@ class AppWindow(QStackedWidget):
         self.go_to(self.measure)
 
     def _on_back(self) -> None:
-        if not dialogs.confirm(self, "로그아웃", "로그아웃하시겠습니까?", yes="로그아웃", no="취소"):
+        if not dialogs.confirm(self, "로그아웃", "로그아웃 하시겠습니까?", yes="로그아웃", no="취소"):
             return
         self.session.clear()
         self.go_to(self.login)

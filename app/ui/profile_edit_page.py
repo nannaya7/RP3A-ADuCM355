@@ -6,7 +6,7 @@ from typing import Optional
 
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
-from PyQt5.QtWidgets import (QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QScrollArea,
+from PyQt5.QtWidgets import (QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea,
                              QScroller, QVBoxLayout, QWidget)
 
 from app.measure.patient import CHRONIC_DISEASES, SEXES, PatientProfile, missing_labels

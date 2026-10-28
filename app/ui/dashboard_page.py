@@ -10,7 +10,7 @@ from typing import Optional
 
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
-from PyQt5.QtWidgets import (QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QProgressBar,
+from PyQt5.QtWidgets import (QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QProgressBar,
                              QPushButton, QSizePolicy, QVBoxLayout, QWidget)
 
 from app.measure.controller import MeasureController, State, ViewState, fmt_mmss
