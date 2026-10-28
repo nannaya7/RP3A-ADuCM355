@@ -292,7 +292,7 @@ QProgressBar#devBar::chunk { background: #2FAF87; border-radius: 4px; }
 /* 확인/안내 팝업 (app/ui/dialogs.py): 화면과 같은 민트 톤, 터치하기 쉬운 큰 버튼 */
 #popupBar { background: #8A929B; border-top-left-radius: 16px; border-top-right-radius: 16px; }
 #popupClose { background: transparent; color: #FFFFFF; border: none; font-size: 15px; font-weight: 700; }
-#popupBody { background: #F4F9F6; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }
+#popupBody { background: #F4F9F6; border: 2px solid #8A929B; border-top: none; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }
 #popupText { background: transparent; color: #2B2B2B; font-size: 22px; }
 #popupBtn { background: #FFFFFF; color: #424242; border: 1px solid #C9D8D1; border-radius: 10px; font-size: 17px; }
 #popupBtn:pressed { background: #E3EFE9; }
