@@ -65,7 +65,7 @@ def test_layout_fits_480x800_and_sections_visible(tmp_path):
     try:
         d = win.measure
         assert (win.width(), win.height()) == (480, 800)
-        for w in (d.tab_tro, d.tab_nt, d.clock, d.profile_scroll, d.res_value, d.reset_btn, d.stop_btn,
+        for w in (d.tab_tro, d.tab_nt, d.profile_scroll, d.res_value, d.reset_btn, d.stop_btn,
                   d.monitor_btn, d.history_btn, *d.steps):
             assert w.isVisible()
         for w in (d.history_btn, d.steps[2], d.monitor_btn):
@@ -73,8 +73,6 @@ def test_layout_fits_480x800_and_sections_visible(tmp_path):
             assert r.x() <= 480 and r.y() <= 800, w
         g = win.gear.geometry()
         assert win.gear.isVisible() and g.top() < 40 and 480 - g.right() < 30
-        clock = d.clock.rect().translated(d.clock.mapTo(win, d.clock.rect().topLeft()))
-        assert not clock.intersects(g)                                                # 날짜/시간이 설정 버튼과 겹치지 않는다
         for t in (d.tab_tro, d.tab_nt, d.tab_cor, d.tab_hist):                        # 탭 4개가 설정 버튼 왼쪽에 다 들어간다
             assert t.isVisible() and t.mapTo(win, t.rect().topRight()).x() <= g.left()
             assert t.fontMetrics().horizontalAdvance(t.text()) < t.width()

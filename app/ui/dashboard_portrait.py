@@ -3,9 +3,8 @@
 가로 화면(ui/dashboard_page.py)과 같은 컨트롤러·표시 로직(ui/dashboard_logic.py)을 쓰고 배치만 다르다.
 환자 정보는 직접 입력하는 대신 저장된 프로필(가족 구성원)을 골라 쓴다 (measure/profiles.py).
 공개 이름은 가로 화면과 같게 맞췄다: backRequested, monitorRequested, bind(), render(), primary_btn(현재 단계의 시작 버튼),
-stop_btn / reset_btn / monitor_btn, clock, banner, tab_tro / tab_nt.
+stop_btn / reset_btn / monitor_btn, banner, tab_tro / tab_nt.
 """
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -17,7 +16,7 @@ from app.measure.controller import MeasureController, State, ViewState
 from app.measure.patient import PatientProfile
 from app.measure.profiles import ProfileStore
 
-from .dashboard_logic import (RunTracker, STEP_NAMES, DeviceView, ResultView, device_view, korean_datetime,
+from .dashboard_logic import (RunTracker, STEP_NAMES, DeviceView, ResultView, device_view,
                               ref_text, result_view, step_button, step_views)
 from .dashboard_page import _set_prop, card
 from . import dialogs
@@ -146,8 +145,6 @@ class PortraitDashboard(QWidget):
         self.tab_nt.clicked.connect(lambda: self.assayRequested.emit("ntprobnp"))
         self.tab_cor.clicked.connect(lambda: self.assayRequested.emit("cortisol"))
         self.tab_hist.clicked.connect(self.historyRequested)
-        self.clock = QLabel("", objectName="dashClock")
-        self.clock.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         top.addWidget(self.back_btn)
         top.addSpacing(4)
         top.addWidget(self.tab_tro)
@@ -159,17 +156,7 @@ class PortraitDashboard(QWidget):
         self._top_row = QWidget()
         self._top_row.setLayout(top)
         self._top_row.setFixedHeight(34)
-        head = QVBoxLayout()                     # 탭이 4개라 날짜·시각은 탭 줄 바로 아래 한 줄로 둔다 (간격 없이 붙여 세로 공간을 아낀다)
-        head.setSpacing(0)
-        head.addWidget(self._top_row)
-        self.clock.setFixedHeight(13)
-        clock_row = QHBoxLayout()
-        clock_row.setContentsMargins(0, 0, 0, 0)
-        clock_row.addStretch(1)
-        clock_row.addWidget(self.clock)
-        clock_row.addSpacing(54)                 # 설정 버튼 아래로 글자가 들어가지 않게 비운다
-        head.addLayout(clock_row)
-        root.addLayout(head)
+        root.addWidget(self._top_row)            # 세로 화면은 글씨가 작아 날짜·시각은 보이지 않는다
 
         self.banner = QLabel("", objectName="dashBanner", wordWrap=True)
         self.banner.hide()
@@ -198,10 +185,6 @@ class PortraitDashboard(QWidget):
         self._flash_timer = QTimer(self)
         self._flash_timer.setSingleShot(True)
         self._flash_timer.timeout.connect(self._expire_flash)
-        self._clock_timer = QTimer(self)
-        self._clock_timer.timeout.connect(self._tick_clock)
-        self._clock_timer.start(1000)
-        self._tick_clock()
         self.refresh_profiles()
 
     # ================= 만들기 =================
@@ -475,9 +458,6 @@ class PortraitDashboard(QWidget):
         ctrl.patient = sp.to_dict() if sp else {}
         ctrl.viewChanged.connect(self.render)
         self.render(ctrl.snapshot())
-
-    def _tick_clock(self) -> None:
-        self.clock.setText(korean_datetime(datetime.now()))
 
     def render(self, v: ViewState) -> None:
         self._view = v
