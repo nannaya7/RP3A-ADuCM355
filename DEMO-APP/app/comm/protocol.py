@@ -254,8 +254,15 @@ def cmd_verb(mode: str) -> str:
     return f"VERB {mode}"
 
 
-def cmd_rtia(ohm: float) -> str:
-    """HSTIA 이득(RTIA)을 고정한다. 보내지 않으면 펌웨어 기본인 자동 레인지(AUTO)."""
+def cmd_rtia(value="AUTO") -> str:
+    """RTIA(HSTIA 이득) 설정: "AUTO"(자동 레인지) 또는 고정할 옴 값."""
+    v = str(value).strip().upper()
+    if v == "AUTO":
+        return check_cmd("RTIA AUTO")
+    try:
+        ohm = float(v)
+    except ValueError:
+        raise ValueError("RTIA 는 AUTO 또는 옴 값이어야 합니다") from None
     if ohm <= 0:
         raise ValueError("RTIA 는 0 보다 커야 합니다")
     return check_cmd(f"RTIA {fmt_num(ohm)}")
@@ -268,6 +275,7 @@ def cmd_start(cycles: int = 1) -> str:
 
 
 CMD_STOP = "STOP"
+CMD_BATT = "AT+BATT"             # UPS 배터리 질의 → 응답 `AT+BATT,4.15V,95%`
 CMD_STATUS = "STATUS"
 CMD_ENV = "ENV"
 CMD_CALSTATUS = "CALSTATUS"

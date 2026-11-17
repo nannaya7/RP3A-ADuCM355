@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List, Optional
 
 log = logging.getLogger(__name__)
+_warned: set = set()         # 읽을 수 없는 파일은 한 번만 경고한다 (이력을 다시 읽을 때마다 반복하지 않는다)
 
 
 @dataclass(frozen=True)
@@ -62,7 +63,9 @@ def load_history(results_dir, limit: int = 20) -> List[HistoryItem]:
             out.append(HistoryItem(when, s.get("title", "Troponin"), value, status, s.get("unit", "") or "",
                                    str((s.get("patient") or {}).get("name", "") or "").strip(), text))
         except (OSError, ValueError, KeyError, TypeError) as e:
-            log.warning("cannot read the history file (%s): %s", f, e)
+            if str(f) not in _warned:
+                _warned.add(str(f))
+                log.warning("cannot read the history file (%s): %s", f, e)
         if len(out) >= limit:
             break
     return out

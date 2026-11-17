@@ -20,8 +20,8 @@ BANNER = "ADuCM355 3-wire bio-impedance, " + FW_VERSION
 FREQ_MIN, FREQ_MAX, POINTS_MAX = 0.016, 200000.0, 500
 
 
-def demo_z(fw, stages_per_test: int = 2):
-    """데모용: 검사(2단계)마다 9.1 kΩ 이 걸리는 채널이 1번 → 2번 → 3번 순으로 돌아가고, 나머지 채널은 0 Ω."""
+def demo_z(fw, stages_per_test: int = 1):
+    """데모용: 검사(START 1회)마다 9.1 kΩ 이 걸리는 채널이 1번 → 2번 → 3번 순으로 돌아가고, 나머지 채널은 0 Ω."""
     def z(ch: int, f: float) -> complex:
         test = (fw.start_count - 1) // stages_per_test
         return complex(9100.0 if ch == test % 3 else 0.0, 0.0)

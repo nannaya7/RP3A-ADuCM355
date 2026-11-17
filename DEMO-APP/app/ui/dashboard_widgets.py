@@ -178,6 +178,7 @@ class StepCard(QFrame):
         self.art.set_state(done=status == "done", dim=status == "pending")
         self.desc.setText(desc)
         show = progress is not None
+        self.desc.setVisible(not show)                # 측정 중에는 진행률이 설명 자리를 쓴다 (카드 안에 다 들어가게)
         self.prog.setVisible(show)
         if show:
             self.time.setText(time_text)
@@ -374,7 +375,7 @@ class ChipSelect(QFrame):
 class HistoryTable(QTableWidget):
     """최근 검사 이력: 날짜/시간, 검사 항목, 결과, 상태. 손가락으로 밀어서 스크롤."""
     HEADERS = ("날짜 / 시간", "검사 항목", "결과", "상태")
-    FACTORS = {1: 1.0, 2: 1.4, 3: 1.3}   # 목록 확대 비율: 2 = 이력 화면 가로(1.4배), 3 = 이력 화면 세로(1.3배)
+    FACTORS = {1: 1.0, 2: 1.4, 3: 1.3, 4: 1.2}   # 목록 확대 비율: 2 = 이력 화면 가로(1.4배), 3 = 이력 화면 세로(1.3배), 4 = 측정 화면(가로)의 이력 카드(1.2배)
 
     def __init__(self, parent=None, show_patient: bool = False):
         self._patient_col = show_patient              # True 이면 두 번째에 "이름" 열을 더한다 (이력 화면)
@@ -419,7 +420,7 @@ class HistoryTable(QTableWidget):
         last = len(self.HEADERS) - 1
         if self._patient_col:                     # 세로는 폭이 좁아 첫 열 제목을 짧게
             self.setHorizontalHeaderItem(0, QTableWidgetItem("일시" if scale == 3 else self.HEADERS[0]))
-        self.setColumnWidth(last, {1: 82, 2: 150, 3: 96}[scale])
+        self.setColumnWidth(last, {1: 82, 2: 150, 3: 96, 4: 98}[scale])
         if self._patient_col and scale >= 2:
             # 날짜·검사 항목은 내용 폭, 이름은 고정 폭, 남는 폭은 결과가 쓴다 (날짜가 너무 넓고 이름이 좁던 문제)
             for c, mode in ((0, QHeaderView.ResizeToContents), (1, QHeaderView.Fixed), (2, QHeaderView.ResizeToContents),
@@ -427,6 +428,11 @@ class HistoryTable(QTableWidget):
                 h.setSectionResizeMode(c, mode)
             self.setColumnWidth(1, 200 if scale == 2 else 80)
             self.setColumnHidden(2, scale == 3)       # 세로: 검사 항목(항상 같은 값) 열을 숨겨 결과 열에 폭을 준다
+        elif scale == 4:
+            # 측정 화면의 작은 이력 카드: 항목(항상 같은 값)을 숨기고 날짜는 내용 폭, 남는 폭은 결과가 쓴다
+            self.setColumnHidden(1, True)
+            h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+            h.setSectionResizeMode(2, QHeaderView.Stretch)
         elif self._patient_col:
             self.setColumnHidden(2, False)
             h.setSectionResizeMode(0, QHeaderView.Stretch)
@@ -436,7 +442,7 @@ class HistoryTable(QTableWidget):
     def set_items(self, items: List[HistoryItem]) -> None:
         self.setRowCount(len(items))
         for r, it in enumerate(items):
-            two = self._patient_col and " + " in (it.text or "")      # 이력 화면: "A + B" 결과는 두 줄로 나눠 보인다 (가로 폭 절약)
+            two = (self._patient_col or self._scale == 4) and " + " in (it.text or "")      # 이력 화면: "A + B" 결과는 두 줄로 나눠 보인다 (가로 폭 절약)
             f = self.FACTORS[self._scale]
             self.setRowHeight(r, int((48 if two else 34) * f) + (6 if two and f > 1 else 0))
             when = it.when.strftime(self.date_format)

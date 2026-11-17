@@ -12,7 +12,7 @@ from app.measure.judge import UNIT
 
 WEEKDAYS = "월화수목금토일"
 STEP_NAMES = ("시료준비", "혈액투입")
-STEP_PENDING = ("시료가 준비되면 측정시작을 누르세요.",
+STEP_PENDING = ("시료가 준비되면 검사시작을 누르세요.",
                 "센서에 혈액을 투입하고 반응이 끝날 때까지 기다립니다.")
 STEP_DONE = ("시료 준비가 완료되었습니다.",
              "혈액 반응 측정이 완료되었습니다.\n검사 결과가 표시됩니다.")
@@ -88,10 +88,10 @@ def step_button(v: ViewState, i: int) -> tuple:
     if chip_status == "done" and not (v.state == State.DONE and i == v.stage_index):
         return "", False, False
     if i != v.stage_index:
-        return f"{i + 1}단계 시작", False, True
+        return "검사 시작", False, True
     if v.state == State.READY:
         label = v.primary_label
-        return (f"{i + 1}단계 시작" if label == "측정 시작" else label), v.primary_enabled, True
+        return label, v.primary_enabled, True
     return v.primary_label, v.primary_enabled, True
 
 

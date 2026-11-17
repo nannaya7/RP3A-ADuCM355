@@ -6,7 +6,7 @@
 """
 from typing import Optional
 
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QObject, Qt, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from .hangul import JAMO, HangulComposer
@@ -77,6 +77,24 @@ class VirtualKeyboard(QFrame):
     # ---- 포커스 연동 ------------------------------------------------
     def attach(self, app: QApplication) -> None:
         app.focusChanged.connect(self._on_focus_changed)
+        app.installEventFilter(self)                 # 입력란이 아닌 곳을 누르면 키보드를 닫는다
+
+    def _in_input(self, w: QWidget) -> bool:
+        """w 가 입력란(또는 키보드) 안인가."""
+        while w is not None:
+            if w is self or isinstance(w, QLineEdit):
+                return True
+            w = w.parentWidget()
+        return False
+
+    def eventFilter(self, obj: QObject, ev) -> bool:
+        """키보드가 열려 있을 때 입력란·키보드 밖을 누르면(빈 곳, 버튼 등) 입력란의 포커스를 풀고 키보드를 닫는다. 이벤트는 그대로 전달한다."""
+        if ev.type() == QEvent.MouseButtonPress and self.isVisible() and isinstance(obj, QWidget)                 and not self._in_input(obj):
+            fw = QApplication.focusWidget()
+            if isinstance(fw, QLineEdit):
+                fw.clearFocus()
+            self.hide_keyboard()
+        return False
 
     def _on_focus_changed(self, _old, new) -> None:
         if new is None:  # 창 비활성화 등: 상태 유지

@@ -88,9 +88,9 @@ class AppWindow(QStackedWidget):
         # UART → 펌웨어 클라이언트 → 측정 컨트롤러 (화면은 컨트롤러의 ViewState 만 그린다)
         root = Path(__file__).resolve().parent.parent
         self.sensor_store = SensorStore(root / "data" / "sensor.json")      # 설정 > 센서 에서 고른 센서 (재시작해도 유지)
-        self.sensor_mode = self.sensor_store.load(normalize(cfg.sensor_default))
-        if self.sensor_mode == PATCH:       # 패치 센서는 재시작해도 자동으로 연결하지 않는다 (설정 > 센서 에서 [연결] 을 눌러야 연결). 저장된 선택은 그대로 둔다
-            self.sensor_mode = OFF
+        # 실행할 때는 항상 내장 센서(유선 UART)를 켠다. 저장된 센서 선택(꺼짐/패치)은 쓰지 않는다.
+        # 패치 센서는 실행 후에 설정 > 센서 에서 직접 골라야 한다 (고른 패치 장치의 주소·이름은 저장돼 있다).
+        self.sensor_mode = BUILTIN
         self._link_error = ""
         self._link_up = False
         self._probe = None                                    # 패치 센서를 켜는 중이면 진행 정보
@@ -135,9 +135,9 @@ class AppWindow(QStackedWidget):
         self.worker.connectionChanged.connect(self._on_link_changed)
         self.controller.viewChanged.connect(self._on_controller_view)      # STATUS 확인 결과 반영
         # 배터리: 1분마다 AT+BATT (유선 UART 만, 측정 중에는 확인하지 않는다)
-        self.battery = BatteryMonitor(self.worker.send_line, self._battery_allowed, parent=self, link_ok=self._battery_link_ok)
+        self.battery = BatteryMonitor(self.client.send_command, self._battery_allowed, parent=self, link_ok=self._battery_link_ok)
         self.controller.pre_begin = self.battery.check_now        # 모듈 확인(ENV) 전에 배터리(AT+BATT)부터 확인
-        self.worker.lineReceived.connect(self.battery.on_line)
+        self.client.commandFinished.connect(self.battery.on_finished)      # 명령 큐의 응답/실패
         self.battery.changed.connect(self.measure.set_battery)
         self.worker.errorOccurred.connect(self._on_link_error)
         self._refresh_sensor_status()
@@ -189,7 +189,7 @@ class AppWindow(QStackedWidget):
     def _measure_settings(cfg: Config) -> MeasureSettings:
         chans = tuple(int(c) for c in cfg.channels.replace(" ", "").split(",") if c != "")
         return MeasureSettings(start_hz=cfg.sweep_start_hz, stop_hz=cfg.sweep_stop_hz, points=cfg.sweep_points,
-                               channels=chans or (0, 1, 2), rtia_ohm=cfg.rtia_ohm,
+                               channels=chans or (0, 1, 2), rtia=cfg.rtia,
                                reaction_timer_start=cfg.reaction_timer_start)
 
     # ---- 설정 > 센서 (패치 센서 = 블루투스 / 내장 센서 = UART, 동시에 하나만) ----
@@ -352,6 +352,7 @@ class AppWindow(QStackedWidget):
 
     def _on_controller_view(self, _view=None) -> None:
         self._refresh_sensor_status()
+        self.settings.info.set_firmware(self.controller._module.get("fw", ""))      # 설정 > 정보 의 펌웨어 버전
         if getattr(self, "battery", None) is not None:
             self.battery.poke()                   # 측정이 끝났으면 밀린 배터리 확인을 한다
 
@@ -359,10 +360,13 @@ class AppWindow(QStackedWidget):
         return self.sensor_mode == BUILTIN and self.client.connected      # 연결 알림 순서와 무관하게 실제 연결 상태를 본다
 
     def _battery_allowed(self) -> bool:
-        """배터리 확인을 보내도 되는가: 유선 UART(내장 센서)가 연결돼 있고, 검사 진행 중이 아닐 때만."""
-        if not self._battery_link_ok() or self.controller.state == State.CHECKING:
+        """배터리 확인을 보내도 되는가: 유선 UART(내장 센서)가 연결돼 있고, 지금 측정 중이 아닐 때만.
+        측정 중 = 모듈 확인·측정 설정·측정·중지·계산 단계이거나 펌웨어가 측정을 진행 중일 때.
+        중지하거나 오류가 난 뒤처럼 측정을 하고 있지 않으면, 검사가 중간 단계에 머물러 있어도 읽는다."""
+        if not self._battery_link_ok() or self.client.measuring:
             return False
-        return not self._test_in_progress()       # 측정 중이거나 단계 사이(검사 진행 중)에는 보내지 않는다
+        busy = (State.CHECKING, State.CONFIGURING, State.MEASURING, State.STOPPING, State.COMPUTING)
+        return self.controller.state not in busy
 
     def _on_link_changed(self, connected: bool) -> None:
         if connected:

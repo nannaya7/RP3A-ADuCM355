@@ -10,7 +10,7 @@ from typing import Optional
 
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
-from PyQt5.QtWidgets import (QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QProgressBar,
+from PyQt5.QtWidgets import (QApplication, QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QProgressBar,
                              QGridLayout, QPushButton, QSizePolicy, QStackedWidget, QVBoxLayout, QWidget)
 
 from app.measure.controller import MeasureController, State, ViewState, fmt_mmss
@@ -29,6 +29,7 @@ def _set_prop(w: QWidget, name: str, value) -> None:
 
 
 DEMO_PROFILE = {"name": "TEST", "sex": "남성", "age": "50", "weight": "80"}      # 비워 두고 시작할 때 자동 입력
+DEVICE_H = 180        # 장비 상태 카드 높이 (처음 약 137px → 164px → 180px)
 FIELD_H = 62        # 환자 프로필 입력란 높이 (글씨 150%)
 
 
@@ -84,6 +85,7 @@ class DashboardPage(QWidget):
         super().__init__()
         self.setObjectName("dashPage")
         self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setFocusPolicy(Qt.ClickFocus)           # 입력란이 아닌 곳이 포커스를 가질 수 있게 (이름란에 커서가 저절로 가서 키보드가 뜨는 것을 막는다)
         self._cfg = cfg
         self._results_dir = Path(results_dir) if results_dir else Path(cfg.results_dir)
         self._ctrl: Optional[MeasureController] = None
@@ -136,23 +138,23 @@ class DashboardPage(QWidget):
         self.banner.hide()
         root.addWidget(self.banner)
 
-        # ---- 윗줄: 환자 프로필 | 검사 결과 ----
-        row1 = QHBoxLayout()
-        row1.setSpacing(14)
-        row1.addWidget(self._build_patient(), 5)
-        row1.addWidget(self._build_result(), 3)
-        root.addLayout(row1, 10)
-
-        # ---- 아랫줄: 검사 진행 | (장비 상태 / 검사 이력) ----
-        row2 = QHBoxLayout()
-        row2.setSpacing(14)
-        row2.addWidget(self._build_progress(), 15)
+        # ---- 왼쪽: 환자 프로필 / 검사 진행   |   오른쪽: 장비 상태(맨 위) / 검사 이력(남는 높이 전부) ----
+        # 검사 결과 카드는 화면에 넣지 않는다 (결과는 측정 완료 팝업). 렌더링 코드가 값을 채우므로 만들어만 두고 숨긴다.
+        self.result_frame = self._build_result()
+        self.result_frame.hide()
+        cols = QHBoxLayout()
+        cols.setSpacing(14)
+        left = QVBoxLayout()
+        left.setSpacing(10)
+        left.addWidget(self._build_patient(), 10)
+        left.addWidget(self._build_progress(), 10)
         right = QVBoxLayout()
         right.setSpacing(10)
-        right.addWidget(self._build_device(), 10)
-        right.addWidget(self._build_history(), 11)
-        row2.addLayout(right, 9)                 # 윗줄(5 : 3)과 같은 비율(15 : 9)이라 오른쪽 카드들의 왼쪽 끝이 맞는다
-        root.addLayout(row2, 10)
+        right.addWidget(self._build_device())
+        right.addWidget(self._build_history(), 1)
+        cols.addLayout(left, 5)
+        cols.addLayout(right, 3)
+        root.addLayout(cols, 1)
 
         self._clock_timer = QTimer(self)
         self._clock_timer.timeout.connect(self._tick_clock)
@@ -322,7 +324,7 @@ class DashboardPage(QWidget):
         row.setSpacing(6)
         self.steps = []
         for i, name in enumerate(STEP_NAMES):
-            sc = StepCard(i, name, art_size=120)
+            sc = StepCard(i, name, art_size=104)
             self.steps.append(sc)
             row.addWidget(sc, 1)
             if i < len(STEP_NAMES) - 1:
@@ -334,7 +336,8 @@ class DashboardPage(QWidget):
         f, v, _ = card("장비 상태", "device")
         v.setSpacing(6)
         # 세로 화면과 같은 아이콘 3개(장비 / 키트 / 연결)와 한 줄 문구
-        self.dev_panel = DeviceStatusPanel(56)
+        f.setFixedHeight(DEVICE_H)
+        self.dev_panel = DeviceStatusPanel(62)        # 아이콘도 카드와 같은 비율(약 10%)로 키운다
         v.addStretch(1)
         v.addWidget(self.dev_panel)
         v.addStretch(1)
@@ -345,6 +348,8 @@ class DashboardPage(QWidget):
         f, v, head = card("검사 이력", "doc")
         v.setSpacing(4)
         self.history = HistoryTable()
+        self.history.set_scale(4)                     # 이 작은 이력 카드의 글씨는 20% 크게
+        self.history.date_format = "%m. %d" + chr(10) + "%H:%M"      # 날짜/시각을 두 줄로
         v.addWidget(self.history, 1)
         return f
 
@@ -396,6 +401,7 @@ class DashboardPage(QWidget):
     def _on_primary(self) -> None:
         if self._ctrl is None:
             return
+        self._release_focus()                          # 검사 시작을 누르면 터치 키보드는 닫는다
         v = self._view
         if self._need_patient():
             if self._required_empty():                  # 아무것도 입력하지 않고 시작하면 데모용 기본 정보를 넣는다
@@ -473,10 +479,12 @@ class DashboardPage(QWidget):
         if self._ctrl is None or v is None or v.state != State.DONE:
             return
         rv = result_view(self._cfg, v, self._run.wait_seen, self._run.finished_at)
+        self._release_focus()                           # 팝업이 닫힌 뒤 이름란으로 커서가 가지 않게 포커스를 미리 비운다
         dialogs.result_popup(self.window(), rv, self._cfg.method)
         if self._ctrl.state == State.DONE:              # 새 측정: 이전 환자 정보를 남기지 않는다
             self._ctrl.primary()
             self.clear_profile()
+            self._release_focus()
             self._ctrl.patient = self.profile().to_dict()
 
     def refresh_history(self) -> None:
@@ -511,6 +519,17 @@ class DashboardPage(QWidget):
         self.res_note.setVisible(bool(r.note))
         self.info_wait.setText(r.info_wait)
         self.info_done.setText(r.info_done)
+
+    def _release_focus(self) -> None:
+        """입력란의 포커스를 풀어 터치 키보드를 닫는다 (필요할 때 입력란을 눌러 다시 연다)."""
+        fw = QApplication.focusWidget()
+        if isinstance(fw, QLineEdit):
+            fw.clearFocus()
+        self.setFocus(Qt.OtherFocusReason)
+
+    def showEvent(self, e) -> None:
+        super().showEvent(e)
+        QTimer.singleShot(0, self._release_focus)    # 화면이 열릴 때 이름란에 커서가 가 있지 않게
 
     def on_keyboard(self, visible: bool, height: int = 0) -> None:
         pass            # 입력란이 모두 화면 위쪽(키보드 위)에 있어서 배치를 바꿀 필요가 없다

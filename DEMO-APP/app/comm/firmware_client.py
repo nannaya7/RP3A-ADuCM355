@@ -161,6 +161,10 @@ class FirmwareClient(QObject):
         self.rawLine.emit(line)
         if self._measuring:
             self._watchdog.start(self._watchdog_ms)
+        pend = self._pending
+        if pend is not None and pend.word == p.CMD_BATT and line.strip().upper().startswith(p.CMD_BATT):
+            self._finish(True, line.strip())               # AT 응답 (펌웨어 # 줄 형식이 아님)
+            return
         try:
             rec = p.parse_line(line)
         except p.ParseError as e:

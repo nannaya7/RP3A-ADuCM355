@@ -72,6 +72,13 @@ class RoleTabs(QWidget):
     def current_key(self) -> str:
         return self._tabs[self._index][0]
 
+    def set_current(self, key: str) -> None:
+        """코드에서 탭을 고른다 (changed 신호는 보내지 않는다)."""
+        for i, (k, _) in enumerate(self._tabs):
+            if k == key and i != self._index:
+                self._index = i
+                self.update()
+
     def _seg(self, i: int) -> QRectF:
         w = (self.width() - 12) / len(self._tabs)
         return QRectF(6 + w * i, 6, w, self.height() - 12)

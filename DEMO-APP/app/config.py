@@ -30,7 +30,7 @@ class Config:
     sweep_stop_hz: float = 10000.0
     sweep_points: int = 10
     channels: str = "0,1,2"
-    rtia_ohm: float = 20000.0
+    rtia: str = "AUTO"                # RTIA: AUTO(자동 레인지) 또는 고정할 옴 값
     elapsed_min: Optional[float] = None
     assay: str = "troponin"           # 계산 모델: troponin | ntprobnp (연구개발용)
     results_dir: str = "results"
@@ -87,7 +87,7 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
         sweep_stop_hz=cp.getfloat("measure", "sweep_stop_hz", fallback=d.sweep_stop_hz),
         sweep_points=cp.getint("measure", "sweep_points", fallback=d.sweep_points),
         channels=cp.get("measure", "channels", fallback=d.channels).strip(),
-        rtia_ohm=cp.getfloat("measure", "rtia_ohm", fallback=d.rtia_ohm),
+        rtia=cp.get("measure", "rtia", fallback=d.rtia).strip().upper() or d.rtia,
         elapsed_min=_opt_float(cp.get("measure", "elapsed_min", fallback="")),
         assay=cp.get("measure", "assay", fallback=d.assay).strip().lower(),
         results_dir=cp.get("measure", "results_dir", fallback=d.results_dir).strip(),

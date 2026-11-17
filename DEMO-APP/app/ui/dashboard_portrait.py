@@ -270,10 +270,12 @@ class PortraitDashboard(QWidget):
         self.reset_btn = QPushButton("처음부터", objectName="smallBtn")
         self.stop_btn = QPushButton("중지", objectName="smallDanger")
         self.monitor_btn = QPushButton("모니터링", objectName="smallBtn")
-        for b, w in ((self.reset_btn, 90), (self.stop_btn, 62), (self.monitor_btn, 94)):
+        for b, w in ((self.reset_btn, 90), (self.stop_btn, 62), (self.monitor_btn, 100)):
             b.setFixedSize(w, 40)
             b.setFocusPolicy(Qt.NoFocus)
-            head.addWidget(b)
+        head.addWidget(self.monitor_btn)
+        self.reset_btn.hide()                  # [처음부터] [중지] 는 화면에서 뺐다 (실수로 눌러 측정이 끊기는 것을 막는다. 동작은 그대로 두고 숨김)
+        self.stop_btn.hide()
         self.reset_btn.clicked.connect(self._on_reset)
         self.stop_btn.clicked.connect(lambda: self._ctrl and self._ctrl.stop())
         self.monitor_btn.clicked.connect(self.monitorRequested)

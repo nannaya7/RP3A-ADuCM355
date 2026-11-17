@@ -1,6 +1,7 @@
 """측정 세션 저장: 원문 UART 로그(raw.log)와 결과(JSON). 저장 실패가 측정을 막지 않도록 예외를 삼킨다."""
 import json
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -48,9 +49,14 @@ class SessionStore:
     def write_json(self, name: str, obj) -> None:
         if self.dir is None:
             return
-        try:
-            (self.dir / name).write_text(json.dumps(obj, ensure_ascii=False, indent=2, default=_default),
-                                         encoding="utf-8")
+        path = self.dir / name
+        tmp = path.with_name(path.name + ".tmp")
+        try:                                       # 임시 파일에 다 쓴 뒤 바꿔치기: 도중에 앱이 꺼지거나 전원이 나가도 빈 파일이 남지 않는다
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(json.dumps(obj, ensure_ascii=False, indent=2, default=_default))
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, path)
         except OSError as e:
             self._fail(e)
 

@@ -177,7 +177,7 @@ QPushButton[big="true"]#dashPrimary { font-size: 24px; border-radius: 14px; }
 #stepCard #stepNum { font-size: 21px; border-radius: 21px; }
 #stepCard #stepName { font-size: 24px; }
 #stepCard #stepBadge { font-size: 20px; border-radius: 18px; padding: 0 16px; }
-#stepCard #stepTime { font-size: 30px; }
+#stepCard #stepTime { font-size: 26px; }
 #stepCard #stepPct { font-size: 20px; }
 #stepCard #stepDesc { font-size: 20px; }
 #dashClock { font-size: 16px; color: #3C4B5C; }
@@ -276,6 +276,10 @@ QProgressBar#devBar::chunk { background: #2FAF87; border-radius: 4px; }
 #historyTable[scale="2"] { font-size: 18px; }
 #historyTable[scale="2"] QHeaderView::section { padding: 6px 10px; font-size: 17px; }
 #historyTable[scale="2"]::item { padding: 0 10px; }
+#historyTable[scale="4"] { font-size: 16px; }
+#historyTable[scale="4"] QHeaderView::section { padding: 5px 7px; font-size: 14px; }
+#historyTable[scale="4"]::item { padding: 0 7px; }
+#historyTable[scale="4"] #histStatus { border-radius: 13px; font-size: 14px; padding: 0 14px; }
 #historyTable[scale="3"] { font-size: 17px; }
 #historyTable[scale="3"] QHeaderView::section { padding: 5px 6px; font-size: 16px; }
 #historyTable[scale="3"]::item { padding: 0 6px; }

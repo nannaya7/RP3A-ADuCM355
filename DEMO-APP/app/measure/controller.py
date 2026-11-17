@@ -4,8 +4,8 @@ UI 는 `viewChanged(ViewState)` 를 받아 그리기만 하고, 버튼은 아래
     primary()  주 버튼(상태에 따라 시작/재시도/새 측정)    stop()  중지    restart()  처음부터
 
 흐름 (Troponin, 화면 단계명 시료준비 → 혈액투입 → 세척후 검증 = 내부 T0 → T1 → T2):
-    확인(ENV 응답으로 모듈 확인, STATUS/CALSTATUS 는 정보) → READY → [측정 시작] → 센서 0,1,2 측정(START 1) → 단계 완료
-    → (혈액투입 단계는 반응 대기 타이머가 끝나야 버튼 활성) → [측정 시작] → … → [측정 시작] → … → 계산 → 결과
+    확인(ENV 응답으로 모듈 확인, STATUS/CALSTATUS 는 정보) → READY → [검사 시작] → 센서 0,1,2 측정(START 1) → 단계 완료
+    → (혈액투입 단계는 반응 대기 타이머가 끝나야 버튼 활성) → [검사 시작] → … → [검사 시작] → … → 계산 → 결과
 각 단계는 사용자가 수락(버튼)해야 시작된다. 자동 진행은 StageDef.auto_start 로만 켠다.
 """
 from __future__ import annotations
@@ -138,7 +138,7 @@ class MeasureController(QObject):
         self._wait_t0: Optional[float] = None
         self._wait_s = 0
         self._wait_unstarted = False        # reaction_timer_start == "manual" 에서 [혈액 투입 완료] 대기
-        self._cycle_done = False
+        self._cycles_seen = 0
         self._stage_error: Optional[str] = None
         self._error_kind = ""               # "link": 통신 문제 → 재시도는 모듈 확인부터 / "stage": 같은 단계 재측정 / "compute": 마지막 단계 재측정
         self._banner = ("", "info")
@@ -269,8 +269,11 @@ class MeasureController(QObject):
             self._session_open = True
         stage = self.stages[self._idx]
         s = self.settings
+        if not stage.measure:                     # 측정 없는 단계 (1단계): 검사 시작을 누르면 바로 다음 단계로
+            self._skip_stage()
+            return
         self._cur = {}
-        self._cycle_done = False
+        self._cycles_seen = 0
         self._stage_error = None
         self._error_kind = ""
         self._stage_t0 = self._clock()
@@ -280,7 +283,7 @@ class MeasureController(QObject):
             self.store.note(f"stage {stage.key} configure")
         self._run_chain(
             [p.cmd_sweep(s.start_hz, s.stop_hz, s.points), p.cmd_chan(s.channels), p.cmd_verb("FULL"),
-             p.cmd_rtia(s.rtia_ohm), p.cmd_start(1)],
+             p.cmd_rtia(s.rtia), p.cmd_start(stage.cycles)],
             on_ok=lambda: None, on_fail=self._config_failed)
 
     def _config_failed(self, msg: str) -> None:
@@ -303,7 +306,7 @@ class MeasureController(QObject):
             self.store.log_line(line)
 
     def _on_cycle_done(self, _n: int) -> None:
-        self._cycle_done = True
+        self._cycles_seen += 1
 
     def _on_fw_error(self, msg: str) -> None:
         if self._state in (State.CONFIGURING, State.MEASURING):
@@ -330,18 +333,33 @@ class MeasureController(QObject):
         elif st in (State.CONFIGURING, State.MEASURING):
             if self._stage_error:
                 self._fail_stage(self._stage_error, "stage")    # 펌웨어 오류/무응답: 같은 단계를 바로 재측정
-            elif self._cycle_done:
+            elif self._cycles_seen >= self.stages[self._idx].cycles:
                 self._finish_stage()
             else:
                 self._fail_stage("측정이 예상보다 일찍 끝났습니다.", "stage")
+
+    def _skip_stage(self) -> None:
+        """측정 없는 단계를 끝낸다: 다음 단계로 넘어가 (반응 대기가 없으면) 바로 측정을 시작한다."""
+        stage = self.stages[self._idx]
+        self._done[self._idx] = {}
+        if self.store:
+            self.store.note(f"stage {stage.key} skipped (no measurement)")
+        self.stageCompleted.emit(self._idx)
+        self._idx += 1
+        self._set_banner("", "info")
+        self._set_state(State.READY)
+        self._arm_wait_for_current_stage()
+        if self.stages[self._idx].wait_before_s == 0:
+            self.start_stage()
 
     def _finish_stage(self) -> None:
         s = self.settings
         problems = []
         for ch in s.channels:
             n = len(self._cur.get(ch, []))
-            if n != s.points:
-                problems.append(f"센서 {ch}: {n}/{s.points}점")
+            want = s.points * self.stages[self._idx].cycles
+            if n != want:
+                problems.append(f"센서 {ch}: {n}/{want} Point")
         if problems:
             self._fail_stage("점 수가 부족합니다 — " + ", ".join(problems), "stage")
             return
@@ -405,7 +423,7 @@ class MeasureController(QObject):
             "firmware": dict(self._module),
             "settings": {"start_hz": self.settings.start_hz, "stop_hz": self.settings.stop_hz,
                          "points": self.settings.points, "channels": list(self.settings.channels),
-                         "rtia_ohm": self.settings.rtia_ohm, "elapsed_min": self.settings.elapsed_min},
+                         "rtia": self.settings.rtia, "elapsed_min": self.settings.elapsed_min},
             "stages": {self.stages[i].key: {"code_name": self.stages[i].code_name,
                                             "counts": {ch: len(v) for ch, v in d.items()}}
                        for i, d in self._done.items()},
@@ -527,7 +545,8 @@ class MeasureController(QObject):
         st = self._state
         s = self.settings
         stage = self.stages[min(self._idx, len(self.stages) - 1)]
-        total = s.points * len(s.channels)
+        want = s.points * stage.cycles            # 센서 하나당 점 수 (1단계처럼 측정 없는 단계는 의미 없음)
+        total = want * len(s.channels)
         got = sum(len(v) for v in self._cur.values())
         measuring = st in (State.CONFIGURING, State.MEASURING, State.STOPPING)
         remaining = self._wait_remaining()
@@ -543,7 +562,7 @@ class MeasureController(QObject):
             if self._wait_unstarted:
                 label, enabled = "혈액 투입 완료 (타이머 시작)", True
             else:
-                label, enabled = "측정 시작", remaining <= 0
+                label, enabled = "검사 시작", remaining <= 0
         elif measuring:
             label = "측정 중…"
         elif st == State.COMPUTING:
@@ -565,7 +584,7 @@ class MeasureController(QObject):
 
         # 진행률
         if measuring:
-            progress, ptxt = (got / total if total else 0.0), f"{got} / {total} 점"
+            progress, ptxt = (got / total if total else 0.0), f"{got} / {total} Point"
         elif st == State.READY and self._wait_s > 0:
             progress = 1.0 - remaining / self._wait_s
             ptxt = "반응 대기"
@@ -580,14 +599,14 @@ class MeasureController(QObject):
             if measuring:
                 n = len(self._cur.get(ch, []))
                 sat = sum(1 for r in self._cur.get(ch, []) if r.sat)
-                text = "대기" if n == 0 else ("완료" if n >= s.points else "측정 중")
+                text = "대기" if n == 0 else ("완료" if n >= want else "측정 중")
             else:
                 n = self._last_counts.get(ch, 0)
                 sat = self._last_sat.get(ch, 0)
                 text = "완료" if n else "대기"
                 if st == State.ERROR:
                     text = "—"
-            sensors.append(SensorView(ch, text, n, s.points, sat))
+            sensors.append(SensorView(ch, text, n, want, sat))
 
         # 단계 칩
         chips = []

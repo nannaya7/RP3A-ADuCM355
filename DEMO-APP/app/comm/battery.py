@@ -1,11 +1,14 @@
 """배터리 상태 확인 (UPS). 유선 UART 로 `AT+BATT` 를 1분마다 보내 `AT+BATT,4.15V,95%` 응답을 읽는다.
+명령은 다른 명령과 같이 FirmwareClient 의 명령 큐로 보낸다: 한 번에 하나만 보내고, 응답을 받은 뒤에 다음 명령을 보낸다.
 
 - 측정 중(확인·구성·측정·중지·계산)에는 보내지 않는다. 측정이 끝나면 밀린 확인을 바로 한다.
 - 유선 UART(내장 센서)일 때만 보낸다. 패치 센서(BLE)로는 보내지 않는다.
-- 값을 아직 모르는 동안(앱 시작 직후, 응답 없음)은 3초마다 다시 확인하고, 값이 생기면 1분 간격으로 돌아간다.
+- 값을 아직 모르는 동안(앱 시작 직후)이나 직전 확인이 실패한 동안은 3초마다 다시 확인하고, 성공하면 1분 간격으로 돌아간다.
+- 측정이 끝나 막힌 것이 풀리면 1분 주기를 기다리지 않고 바로 한 번 확인한다.
 - 응답이 오지 않으면 직전 값을 유지하다가, 연속 MISS_LIMIT 번 실패하면 "알 수 없음"으로 바꾼다.
 """
 import re
+import time
 from typing import Callable, Optional
 
 from PyQt5.QtCore import QObject, QTimer, pyqtSignal
@@ -48,6 +51,8 @@ class BatteryMonitor(QObject):
         self._start_timer.setSingleShot(True)
         self._start_timer.timeout.connect(self._flush_start)
         self._due = True                       # 확인할 차례가 되었는데 아직 못 보냈다
+        self._last_read = 0.0                  # 마지막으로 값을 읽은 시각 (time.monotonic)
+        self._was_ok = False                   # 직전에 보내도 되는 상태였는가 (막혔다가 풀린 순간을 알아내는 데 쓴다)
         self._waiting = False
         self._misses = 0
         self.volt: Optional[float] = None
@@ -65,7 +70,12 @@ class BatteryMonitor(QObject):
 
     # ---- 바깥에서 부르는 것 ----
     def poke(self) -> None:
-        """상태가 바뀌었을 때(연결됨, 측정 끝남 등) 호출: 밀린 확인이 있으면 지금 한다."""
+        """상태가 바뀌었을 때(연결됨, 측정 끝남 등) 호출. 측정 중 등으로 막혀 있다가 풀린 순간에는 곧바로 한 번 확인한다
+        (측정 동안 배터리가 줄었으므로 다음 1분 주기를 기다리지 않는다). 밀린 확인이 있어도 지금 한다."""
+        ok = self._allowed()
+        if ok and not self._was_ok and time.monotonic() - self._last_read > 5.0:     # 방금 읽었으면 또 읽지 않는다
+            self._due = True
+        self._was_ok = ok
         if self._due:
             self._query()
 
@@ -89,21 +99,26 @@ class BatteryMonitor(QObject):
         self._set(None, None)
         self._flush_start()
 
-    def on_line(self, line: str) -> None:
-        if not line.startswith("AT+BATT"):
-            return
-        parsed = parse_batt(line)
-        if parsed is None:
+    def on_finished(self, text: str, ok: bool, msg: str) -> None:
+        """FirmwareClient.commandFinished 에 연결한다. AT+BATT 명령이 응답(또는 실패·시간 초과)으로 끝났을 때 불린다."""
+        if text != CMD_BATT or not self._waiting:
             return
         self._reply_timer.stop()
         self._waiting = False
-        self._misses = 0
-        self._set(*parsed)
+        parsed = parse_batt(msg) if ok else None
+        if parsed is None:                        # 응답 없음 / 오류 / 형식이 다름
+            self._misses += 1
+            if self._misses >= MISS_LIMIT:
+                self._set(None, None)
+        else:
+            self._misses = 0
+            self._last_read = time.monotonic()
+            self._set(*parsed)
         self._flush_start()
 
     # ---- 내부 ----
     def _retry_unknown(self) -> None:
-        if self.pct is None:
+        if self.pct is None or self._misses > 0:      # 값을 모르거나 직전 확인이 실패했으면 1분을 기다리지 않고 다시 확인한다
             self._due = True
             self._query()
 

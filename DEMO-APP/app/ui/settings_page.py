@@ -710,7 +710,7 @@ class SettingsPage(QWidget):
         top.addStretch(1)
         root.addLayout(top)
 
-        self.tabs = RoleTabs([("wifi", "Wi-Fi"), ("bt", "블루투스"), ("sensor", "센서"), ("info", "정보")], height=46, font_px=15,
+        self.tabs = RoleTabs([("sensor", "센서"), ("bt", "블루투스"), ("wifi", "Wi-Fi"), ("info", "정보")], height=46, font_px=15,
                              track="#CFE3D9")
         if not portrait:
             self.tabs.setFixedWidth(640)
@@ -727,9 +727,9 @@ class SettingsPage(QWidget):
         self.bt = BluetoothPanel(bluetooth, self.runner, portrait)
         self.sensor = SensorPanel(portrait)
         self.info = UpdatePanel(portrait)
-        self.stack.addWidget(self.wifi)
+        self.stack.addWidget(self.sensor)             # 탭 순서와 같게: 센서, 블루투스, Wi-Fi, 정보
         self.stack.addWidget(self.bt)
-        self.stack.addWidget(self.sensor)
+        self.stack.addWidget(self.wifi)
         self.stack.addWidget(self.info)
         root.addWidget(self.stack, 1)
         self.tabs.changed.connect(self._on_tab)
@@ -743,7 +743,9 @@ class SettingsPage(QWidget):
         self.current_panel().open()
 
     def open(self) -> None:
-        """설정 화면이 열릴 때마다 호출. 처음 한 번만 자동으로 읽고, 이후에는 [검색]으로 갱신한다."""
+        """설정 화면이 열릴 때마다 호출. 항상 센서 탭에서 시작한다. 각 탭은 처음 한 번만 자동으로 읽고, 이후에는 [검색]으로 갱신한다."""
+        self.tabs.set_current("sensor")
+        self.stack.setCurrentWidget(self.sensor)
         self.current_panel().open()
 
     def on_keyboard(self, visible: bool, height: int = 0) -> None:
