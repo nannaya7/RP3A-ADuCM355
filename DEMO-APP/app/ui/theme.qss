@@ -273,6 +273,10 @@ QProgressBar#devBar::chunk { background: #2FAF87; border-radius: 4px; }
 #historyTable { background: transparent; border: none; font-size: 13px; gridline-color: transparent; }
 #historyTable QHeaderView::section { background: #EEF3FA; border: none; padding: 4px 6px; font-size: 12px; color: #5E6E80; }
 #historyTable::item { padding: 0 6px; border-bottom: 1px solid #EEF2F7; }
+#historyTable[scale="2"] { font-size: 26px; }
+#historyTable[scale="2"] QHeaderView::section { padding: 8px 12px; font-size: 24px; }
+#historyTable[scale="2"]::item { padding: 0 12px; }
+#historyTable[scale="2"] #histStatus { border-radius: 22px; font-size: 24px; padding: 0 24px; }
 #histStatus { border-radius: 11px; font-size: 12px; font-weight: 700; padding: 0 12px; background: #E8EDF3; color: #6A7A8C; }
 #histStatus[kind="ok"] { background: #D6F0E5; color: #12804E; }
 #histStatus[kind="warn"] { background: #FFE7C2; color: #A35B00; }

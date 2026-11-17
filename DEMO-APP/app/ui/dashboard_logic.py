@@ -142,7 +142,7 @@ class ResultView:
     done: bool = False
     rows: tuple = (("Troponin", "—", ""), ("NT-ProBNP", "—", ""))     # (검사 항목, 값 문구, 단위)
     ready: bool = False          # 값이 있다 (색을 진하게)
-    note: str = "검사가 끝나면 결과가 표시됩니다."
+    note: str = ""
     status_text: str = ""        # "✓ 정상" / "! 주의" / "" (참고 범위가 있을 때만)
     status_kind: str = ""        # ok | warn
     verified: bool = False       # 헤더의 '검증 완료' 배지
@@ -165,14 +165,12 @@ def result_view(cfg, v: ViewState, wait_seen: int, finished_at: Optional[datetim
         return ResultView()
     vd = r.verdict
     if not vd.decided:
-        out = ResultView(done=True, note=f"판정 조건에 맞지 않습니다. ({vd.summary})")
+        out = ResultView(done=True)
     elif vd.failed:
-        out = ResultView(done=True, rows=(("Troponin", "정량실패", ""), ("NT-ProBNP", "정량실패", "")),
-                         note=f"{vd.matched_ch + 1}번 채널 확인 · 정량에 실패했습니다. ({vd.summary})")
+        out = ResultView(done=True, rows=(("Troponin", "정량실패", ""), ("NT-ProBNP", "정량실패", "")))
     else:
         out = ResultView(done=True, ready=True, verified=True,
-                         rows=(("Troponin", f"{vd.troponin:g}", UNIT), ("NT-ProBNP", f"{vd.ntprobnp:g}", UNIT)),
-                         note=f"{vd.matched_ch + 1}번 채널 확인 · {vd.summary}")
+                         rows=(("Troponin", f"{vd.troponin:g}", UNIT), ("NT-ProBNP", f"{vd.ntprobnp:g}", UNIT)))
     out.info_wait = f"{fmt_mmss(wait_seen)} ({wait_seen // 60}분)" if wait_seen else "—"
     out.info_done = finished_at.strftime("%Y. %m. %d  %H:%M") if finished_at else "—"
     return out

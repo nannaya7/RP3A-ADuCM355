@@ -28,6 +28,8 @@ def main() -> int:
     install_qt_filter()
     if args.mock:
         cfg = replace(cfg, uart_mock=True, net_mock=True)
+    if sys.platform == "win32":                       # PC 에서는 전체화면 대신 프로파일 해상도(가로 1280x800 / 세로 480x800)의 창으로 띄운다
+        cfg = replace(cfg, fullscreen=False)
     if args.profile:
         cfg = replace(cfg, display_profile=args.profile)
     if args.screen:

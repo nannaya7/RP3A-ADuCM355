@@ -322,18 +322,37 @@ class HistoryTable(QTableWidget):
         last = len(self.HEADERS) - 1
         h.setSectionResizeMode(last, QHeaderView.Fixed)          # 상태 표시("판정불가")가 잘리지 않을 폭
         self.setColumnWidth(last, 82)
-        self.date_format = "%Y. %m. %d  %H:%M"                   # 좁은 화면에서는 이력 화면이 짧게 바꾼다        h.setHighlightSections(False)
+        self.date_format = "%Y. %m. %d  %H:%M"                   # 좁은 화면에서는 이력 화면이 짧게 바꾼다
+        self._scale = 1
+        h.setHighlightSections(False)
         h.setMinimumSectionSize(60)
         h.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         QScroller.grabGesture(self.viewport(), QScroller.LeftMouseButtonGesture)
 
+    def set_scale(self, scale: int) -> None:
+        """1 = 기본, 2 = 글씨 2배 (검사 이력 화면 가로). 글씨 크기는 theme.qss 의 [scale="2"]."""
+        if scale == self._scale:
+            return
+        self._scale = scale
+        self.setProperty("scale", scale)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        hh = self.horizontalHeader()
+        hh.style().unpolish(hh)
+        hh.style().polish(hh)
+        self.setColumnWidth(len(self.HEADERS) - 1, 82 * scale)
+
     def set_items(self, items: List[HistoryItem]) -> None:
         self.setRowCount(len(items))
         for r, it in enumerate(items):
-            self.setRowHeight(r, 34)
+            two = self._patient_col and " + " in (it.text or "")      # 이력 화면: "A + B" 결과는 두 줄로 나눠 보인다 (가로 폭 절약)
+            self.setRowHeight(r, (48 if two else 34) * self._scale + (10 if two and self._scale > 1 else 0))
             when = it.when.strftime(self.date_format)
             result = it.text or (format_value(it.value) + (f" {it.unit}" if it.unit and it.value is not None else ""))
-            cells = (when, it.patient or "—", it.title, result) if self._patient_col else (when, it.title, result)
+            title = it.title
+            if two:
+                title, result = title.replace(" + ", " +\n"), result.replace(" + ", "\n")
+            cells = (when, it.patient or "—", title, result) if self._patient_col else (when, title, result)
             for c, text in enumerate(cells):
                 item = QTableWidgetItem(text)
                 item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
@@ -341,7 +360,7 @@ class HistoryTable(QTableWidget):
             tag = QLabel(it.status or "—", objectName="histStatus")
             tag.setAlignment(Qt.AlignCenter)
             tag.setProperty("kind", {"정상": "ok", "주의": "warn"}.get(it.status, "none"))
-            tag.setFixedHeight(22)
+            tag.setFixedHeight(22 * self._scale)
             holder = QWidget()
             hl = QHBoxLayout(holder)
             hl.setContentsMargins(4, 0, 4, 0)

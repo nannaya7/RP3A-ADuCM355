@@ -276,7 +276,8 @@ class DashboardPage(QWidget):
         pv.setSpacing(2)
         self.res_rows = DualResult()
         pv.addWidget(self.res_rows, 1)
-        self.res_note = QLabel("검사가 끝나면 결과가 표시됩니다.", objectName="resNote", wordWrap=True)
+        self.res_note = QLabel("", objectName="resNote", wordWrap=True)
+        self.res_note.hide()
         pv.addWidget(self.res_note)
         v.addWidget(panel, 1)
 
@@ -488,6 +489,7 @@ class DashboardPage(QWidget):
         self.done_badge.setVisible(r.verified)
         self.res_rows.set_rows(r.rows, r.ready)
         self.res_note.setText(r.note)
+        self.res_note.setVisible(bool(r.note))
         self.info_wait.setText(r.info_wait)
         self.info_done.setText(r.info_done)
 

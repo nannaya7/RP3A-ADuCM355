@@ -152,8 +152,10 @@ class HistoryPage(QWidget):
     def resizeEvent(self, e) -> None:
         super().resizeEvent(e)
         fmt = "%m. %d %H:%M" if self.width() < 600 else "%Y. %m. %d  %H:%M"      # 세로(좁은) 화면은 연도를 뺀다
-        if fmt != self.table.date_format:
+        scale = 1 if self.width() < 600 else 2                                   # 가로 화면은 목록 글씨를 2배로
+        if fmt != self.table.date_format or scale != self.table._scale:
             self.table.date_format = fmt
+            self.table.set_scale(scale)
             self._apply()
 
     def showEvent(self, e) -> None:
