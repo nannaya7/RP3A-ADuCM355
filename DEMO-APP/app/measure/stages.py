@@ -27,7 +27,7 @@ class MeasureSettings:
     stop_hz: float = 10000.0
     points: int = 10
     channels: Tuple[int, ...] = (0, 1, 2)   # 센서 0, 1, 2 (펌웨어 CH0~CH2)
-    rtia_ohm: float = 1000.0
+    rtia_ohm: float = 20000.0        # RTIA 고정값 (측정 시작 전에 RTIA 명령으로 보낸다)
     elapsed_min: Optional[float] = None     # 배치 시작 후 경과 시간(분). 없으면 모델이 Day-1 중앙값을 가정하고 경고
     reaction_timer_start: str = "auto"      # "auto": 이전 단계가 끝나면 타이머 시작 / "manual": 사용자가 [혈액 투입 완료]를 누르면 시작
 

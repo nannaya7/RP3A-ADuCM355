@@ -20,7 +20,7 @@ from app.measure.patient import CHRONIC_DISEASES, SEXES, PatientProfile, missing
 from . import dialogs
 from .dashboard_logic import (MEASURING, STEP_NAMES, DeviceView, ResultView, RunTracker, device_view, korean_datetime,
                               ref_text, result_view, step_views)
-from .dashboard_widgets import ChipSelect, DualResult, DeviceStatusPanel, HistoryTable, SectionIcon, StepCard
+from .dashboard_widgets import BatteryIcon, ChipSelect, DualResult, DeviceStatusPanel, HistoryTable, SectionIcon, StepCard
 
 def _set_prop(w: QWidget, name: str, value) -> None:
     w.setProperty(name, value)
@@ -32,7 +32,7 @@ DEMO_PROFILE = {"name": "TEST", "sex": "남성", "age": "50", "weight": "80"}   
 FIELD_H = 62        # 환자 프로필 입력란 높이 (글씨 150%)
 
 
-def card(title: str, icon: str, sub: str = "") -> tuple:
+def card(title: str, icon: str, sub: str = "", icon_size: int = 26) -> tuple:
     """제목 줄이 있는 카드. (카드, 본문 레이아웃, 제목 줄 레이아웃) 을 돌려준다."""
     f = QFrame(objectName="dashCard")
     v = QVBoxLayout(f)
@@ -40,7 +40,7 @@ def card(title: str, icon: str, sub: str = "") -> tuple:
     v.setSpacing(10)
     head = QHBoxLayout()
     head.setSpacing(10)
-    head.addWidget(SectionIcon(icon))
+    head.addWidget(SectionIcon(icon, icon_size))
     head.addWidget(QLabel(title, objectName="cardHeadTitle"))
     if sub:
         head.addWidget(QLabel(sub, objectName="cardHeadSub"))
@@ -126,6 +126,9 @@ class DashboardPage(QWidget):
         top.addWidget(self.tab_hist)
         top.addStretch(1)
         top.addWidget(self.clock)
+        top.addSpacing(12)
+        self.battery = BatteryIcon(72, 34)
+        top.addWidget(self.battery)
         top.addSpacing(64)                      # 우측 상단 설정 버튼 자리 (AppWindow 가 위에 얹는다)
         root.addLayout(top)
 
@@ -444,6 +447,9 @@ class DashboardPage(QWidget):
         if self._ctrl is not None:
             self.render(self._ctrl.snapshot())
 
+    def set_battery(self, volt, pct) -> None:
+        self.battery.set_value(volt, pct)
+
     def assay_blocked(self, text: str) -> None:
         self._flash(text, "warn")
 
@@ -459,6 +465,19 @@ class DashboardPage(QWidget):
 
     def _on_finished(self, _result) -> None:
         self._hist_timer.start(300)                     # 결과 파일이 쓰인 뒤에 이력을 다시 읽는다
+        QTimer.singleShot(400, self._show_done_popup)   # 화면이 결과로 바뀐 뒤에 완료 팝업
+
+    def _show_done_popup(self) -> None:
+        """측정이 끝나면 결과를 팝업으로 보여 준다. [확인] 을 누르면 바로 새 측정을 준비한다."""
+        v = self._view
+        if self._ctrl is None or v is None or v.state != State.DONE:
+            return
+        rv = result_view(self._cfg, v, self._run.wait_seen, self._run.finished_at)
+        dialogs.result_popup(self.window(), rv, self._cfg.method)
+        if self._ctrl.state == State.DONE:              # 새 측정: 이전 환자 정보를 남기지 않는다
+            self._ctrl.primary()
+            self.clear_profile()
+            self._ctrl.patient = self.profile().to_dict()
 
     def refresh_history(self) -> None:
         self.history.set_items(load_history(self._results_dir))

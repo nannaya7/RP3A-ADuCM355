@@ -273,10 +273,14 @@ QProgressBar#devBar::chunk { background: #2FAF87; border-radius: 4px; }
 #historyTable { background: transparent; border: none; font-size: 13px; gridline-color: transparent; }
 #historyTable QHeaderView::section { background: #EEF3FA; border: none; padding: 4px 6px; font-size: 12px; color: #5E6E80; }
 #historyTable::item { padding: 0 6px; border-bottom: 1px solid #EEF2F7; }
-#historyTable[scale="2"] { font-size: 26px; }
-#historyTable[scale="2"] QHeaderView::section { padding: 8px 12px; font-size: 24px; }
-#historyTable[scale="2"]::item { padding: 0 12px; }
-#historyTable[scale="2"] #histStatus { border-radius: 22px; font-size: 24px; padding: 0 24px; }
+#historyTable[scale="2"] { font-size: 18px; }
+#historyTable[scale="2"] QHeaderView::section { padding: 6px 10px; font-size: 17px; }
+#historyTable[scale="2"]::item { padding: 0 10px; }
+#historyTable[scale="3"] { font-size: 17px; }
+#historyTable[scale="3"] QHeaderView::section { padding: 5px 6px; font-size: 16px; }
+#historyTable[scale="3"]::item { padding: 0 6px; }
+#historyTable[scale="3"] #histStatus { border-radius: 14px; font-size: 16px; padding: 0 10px; }
+#historyTable[scale="2"] #histStatus { border-radius: 15px; font-size: 17px; padding: 0 16px; }
 #histStatus { border-radius: 11px; font-size: 12px; font-weight: 700; padding: 0 12px; background: #E8EDF3; color: #6A7A8C; }
 #histStatus[kind="ok"] { background: #D6F0E5; color: #12804E; }
 #histStatus[kind="warn"] { background: #FFE7C2; color: #A35B00; }
@@ -333,3 +337,22 @@ QProgressBar#devBar::chunk { background: #2FAF87; border-radius: 4px; }
 #recentBox { background: #FFFFFF; border: 1px solid #BFD6CB; border-radius: 12px; }
 #recentItem { background: #F4F9F6; color: #2B2B2B; border: none; border-radius: 8px; font-size: 20px; text-align: left; padding: 0 14px; }
 #recentItem:pressed { background: #CFE8DC; }
+
+/* 세로 화면(#dashPage[compact]) 글씨 1.3배 */
+#dashPage[compact="true"] #dashBack { font-size: 26px; border-radius: 14px; }
+#dashPage[compact="true"] #modelTab { font-size: 18px; border-radius: 12px; }
+#dashPage[compact="true"] #cardHeadTitle { font-size: 22px; }
+#dashPage[compact="true"] #profileHint { font-size: 16px; }
+#dashPage[compact="true"] #profileName { font-size: 21px; }
+#dashPage[compact="true"] #profileCard { border-radius: 14px; }
+#dashPage[compact="true"] #smallBtn, #dashPage[compact="true"] #smallDanger { font-size: 18px; border-radius: 12px; }
+#dashPage[compact="true"] #stepName { font-size: 18px; }
+#dashPage[compact="true"] #stepNum { font-size: 17px; border-radius: 17px; }
+#dashPage[compact="true"] #stepBadge { font-size: 16px; padding: 0 10px; border-radius: 14px; }
+#dashPage[compact="true"] #stepDesc { font-size: 16px; }
+#dashPage[compact="true"] #stepTime { font-size: 20px; }
+#dashPage[compact="true"] #stepPct { font-size: 17px; }
+#dashPage[compact="true"] #stepStartBtn { font-size: 18px; border-radius: 12px; }
+#dashPage[compact="true"] #devLabel { font-size: 17px; }
+#dashPage[compact="true"] #historyLinkText { font-size: 19px; }
+#dashPage[compact="true"] #dashBanner { font-size: 18px; }

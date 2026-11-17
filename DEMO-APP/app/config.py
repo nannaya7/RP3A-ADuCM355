@@ -30,7 +30,7 @@ class Config:
     sweep_stop_hz: float = 10000.0
     sweep_points: int = 10
     channels: str = "0,1,2"
-    rtia_ohm: float = 1000.0
+    rtia_ohm: float = 20000.0
     elapsed_min: Optional[float] = None
     assay: str = "troponin"           # 계산 모델: troponin | ntprobnp (연구개발용)
     results_dir: str = "results"

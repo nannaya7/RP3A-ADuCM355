@@ -254,6 +254,13 @@ def cmd_verb(mode: str) -> str:
     return f"VERB {mode}"
 
 
+def cmd_rtia(ohm: float) -> str:
+    """HSTIA 이득(RTIA)을 고정한다. 보내지 않으면 펌웨어 기본인 자동 레인지(AUTO)."""
+    if ohm <= 0:
+        raise ValueError("RTIA 는 0 보다 커야 합니다")
+    return check_cmd(f"RTIA {fmt_num(ohm)}")
+
+
 def cmd_start(cycles: int = 1) -> str:
     if cycles < 0:
         raise ValueError("cycles >= 0")

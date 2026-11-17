@@ -186,6 +186,52 @@ class StepCard(QFrame):
             self.pct.setText(f"{int(round(progress * 100))}%")
 
 
+class BatteryIcon(QWidget):
+    """우측 상단 배터리 아이콘: 4단계 채움 + 아이콘 안에 잔량(%). 알 수 없으면 회색 테두리에 "--"."""
+    COLORS = {1: "#E5534B", 2: "#F2A93B", 3: "#7CCB8E", 4: "#4FBF8B"}      # 단계별 채움 색 (1 = 거의 없음 → 빨강)
+
+    def __init__(self, width: int = 64, height: int = 30, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(width, height)
+        self._pct = None
+        self._volt = None
+
+    def set_value(self, volt, pct) -> None:
+        self._volt, self._pct = volt, pct
+        self.setToolTip(f"배터리 {pct}% ({volt:.2f} V)" if pct is not None else "배터리 상태를 확인할 수 없습니다")
+        self.update()
+
+    def level(self) -> int:
+        from app.comm.battery import level_of
+        return level_of(self._pct)
+
+    def paintEvent(self, _e) -> None:
+        lvl = self.level()
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        w, h = self.width(), self.height()
+        nub = max(3, h // 8)
+        body = QRectF(1.5, 1.5, w - nub - 3.0, h - 3.0)
+        outline = QColor("#5E6E80" if lvl else "#A9B5C3")
+        p.setPen(QPen(outline, 2))
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawRoundedRect(body, h * 0.22, h * 0.22)
+        p.setPen(Qt.NoPen)
+        p.setBrush(outline)
+        p.drawRoundedRect(QRectF(w - nub - 0.5, h * 0.3, nub, h * 0.4), 1.5, 1.5)
+        if lvl:                                              # 4단계: 안쪽을 1/4 씩 채운다
+            inner = body.adjusted(3, 3, -3, -3)
+            p.setBrush(QColor(self.COLORS[lvl]))
+            p.drawRoundedRect(QRectF(inner.left(), inner.top(), inner.width() * lvl / 4.0, inner.height()),
+                              h * 0.14, h * 0.14)
+        f = QFont(self.font())
+        f.setPixelSize(int(h * 0.46))
+        f.setBold(True)
+        p.setFont(f)
+        p.setPen(QColor("#1F2D3D" if lvl else "#8795A6"))
+        p.drawText(body, Qt.AlignCenter, f"{self._pct}%" if lvl else "--")
+
+
 class DualResult(QWidget):
     """검사 결과 카드의 결과 두 줄: 검사 항목 이름 · 값 · 단위 (Troponin / NT-ProBNP)."""
 
@@ -220,6 +266,34 @@ class DualResult(QWidget):
             unit.setText(u)
             unit.setVisible(bool(u))
             _set_prop(value, "ready", ready)
+
+
+class ResultSummary(QWidget):
+    """측정 완료 팝업에 넣는 결과 요약: 결과 카드(Troponin / NT-ProBNP)와 아래 정보 줄(측정 시간·검증 완료 시간·검사 방법)."""
+
+    def __init__(self, rows, ready: bool, infos, parent=None):
+        super().__init__(parent)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(10)
+        panel = QFrame(objectName="resultPanel")
+        pv = QVBoxLayout(panel)
+        pv.setContentsMargins(20, 14, 20, 14)
+        dual = DualResult()
+        dual.set_rows(rows, ready)
+        pv.addWidget(dual)
+        v.addWidget(panel)
+        info = QFrame(objectName="infoPanel")
+        il = QHBoxLayout(info)
+        il.setContentsMargins(14, 10, 14, 10)
+        il.setSpacing(10)
+        for name, text in infos:
+            col = QVBoxLayout()
+            col.setSpacing(2)
+            col.addWidget(QLabel(name, objectName="infoName"))
+            col.addWidget(QLabel(text, objectName="infoValue", wordWrap=True))
+            il.addLayout(col, 1)
+        v.addWidget(info)
 
 
 class ChipSelect(QFrame):
@@ -300,6 +374,7 @@ class ChipSelect(QFrame):
 class HistoryTable(QTableWidget):
     """최근 검사 이력: 날짜/시간, 검사 항목, 결과, 상태. 손가락으로 밀어서 스크롤."""
     HEADERS = ("날짜 / 시간", "검사 항목", "결과", "상태")
+    FACTORS = {1: 1.0, 2: 1.4, 3: 1.3}   # 목록 확대 비율: 2 = 이력 화면 가로(1.4배), 3 = 이력 화면 세로(1.3배)
 
     def __init__(self, parent=None, show_patient: bool = False):
         self._patient_col = show_patient              # True 이면 두 번째에 "이름" 열을 더한다 (이력 화면)
@@ -330,7 +405,7 @@ class HistoryTable(QTableWidget):
         QScroller.grabGesture(self.viewport(), QScroller.LeftMouseButtonGesture)
 
     def set_scale(self, scale: int) -> None:
-        """1 = 기본, 2 = 글씨 2배 (검사 이력 화면 가로). 글씨 크기는 theme.qss 의 [scale="2"]."""
+        """1 = 기본, 2 = 가로 이력 화면, 3 = 세로 이력 화면(1.3배). 글씨 크기는 theme.qss 의 [scale="2"] / [scale="3"]."""
         if scale == self._scale:
             return
         self._scale = scale
@@ -340,18 +415,37 @@ class HistoryTable(QTableWidget):
         hh = self.horizontalHeader()
         hh.style().unpolish(hh)
         hh.style().polish(hh)
-        self.setColumnWidth(len(self.HEADERS) - 1, 82 * scale)
+        h = self.horizontalHeader()
+        last = len(self.HEADERS) - 1
+        if self._patient_col:                     # 세로는 폭이 좁아 첫 열 제목을 짧게
+            self.setHorizontalHeaderItem(0, QTableWidgetItem("일시" if scale == 3 else self.HEADERS[0]))
+        self.setColumnWidth(last, {1: 82, 2: 150, 3: 96}[scale])
+        if self._patient_col and scale >= 2:
+            # 날짜·검사 항목은 내용 폭, 이름은 고정 폭, 남는 폭은 결과가 쓴다 (날짜가 너무 넓고 이름이 좁던 문제)
+            for c, mode in ((0, QHeaderView.ResizeToContents), (1, QHeaderView.Fixed), (2, QHeaderView.ResizeToContents),
+                            (3, QHeaderView.Stretch)):
+                h.setSectionResizeMode(c, mode)
+            self.setColumnWidth(1, 200 if scale == 2 else 80)
+            self.setColumnHidden(2, scale == 3)       # 세로: 검사 항목(항상 같은 값) 열을 숨겨 결과 열에 폭을 준다
+        elif self._patient_col:
+            self.setColumnHidden(2, False)
+            h.setSectionResizeMode(0, QHeaderView.Stretch)
+            for c in range(1, last):
+                h.setSectionResizeMode(c, QHeaderView.ResizeToContents)
 
     def set_items(self, items: List[HistoryItem]) -> None:
         self.setRowCount(len(items))
         for r, it in enumerate(items):
             two = self._patient_col and " + " in (it.text or "")      # 이력 화면: "A + B" 결과는 두 줄로 나눠 보인다 (가로 폭 절약)
-            self.setRowHeight(r, (48 if two else 34) * self._scale + (10 if two and self._scale > 1 else 0))
+            f = self.FACTORS[self._scale]
+            self.setRowHeight(r, int((48 if two else 34) * f) + (6 if two and f > 1 else 0))
             when = it.when.strftime(self.date_format)
             result = it.text or (format_value(it.value) + (f" {it.unit}" if it.unit and it.value is not None else ""))
             title = it.title
             if two:
-                title, result = title.replace(" + ", " +\n"), result.replace(" + ", "\n")
+                result = result.replace(" + ", "\n")        # 결과는 두 줄로
+                if self._scale == 3:                       # 세로는 폭이 좁아 검사 항목도 두 줄로 나눈다
+                    title = title.replace(" + ", " +\n")
             cells = (when, it.patient or "—", title, result) if self._patient_col else (when, title, result)
             for c, text in enumerate(cells):
                 item = QTableWidgetItem(text)
@@ -360,7 +454,7 @@ class HistoryTable(QTableWidget):
             tag = QLabel(it.status or "—", objectName="histStatus")
             tag.setAlignment(Qt.AlignCenter)
             tag.setProperty("kind", {"정상": "ok", "주의": "warn"}.get(it.status, "none"))
-            tag.setFixedHeight(22 * self._scale)
+            tag.setFixedHeight(int(22 * self.FACTORS[self._scale]))
             holder = QWidget()
             hl = QHBoxLayout(holder)
             hl.setContentsMargins(4, 0, 4, 0)
@@ -568,7 +662,7 @@ class ProfileCard(QFrame):
         self.pid, self.add = pid, add
         self._selected = False
         self._moved = False
-        self.setFixedSize(132, 64)
+        self.setFixedSize(172, 84)
         self.setCursor(Qt.PointingHandCursor)
         row = QHBoxLayout(self)
         row.setContentsMargins(10, 0, 10, 0)

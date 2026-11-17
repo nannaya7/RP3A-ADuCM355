@@ -18,48 +18,55 @@ from app.measure.profiles import ProfileStore
 
 from .dashboard_logic import (RunTracker, STEP_NAMES, DeviceView, ResultView, device_view,
                               ref_text, result_view, step_button, step_views)
-from .dashboard_page import _set_prop, card
+from .dashboard_page import DEMO_PROFILE, _set_prop, card
 from . import dialogs
-from .dashboard_widgets import DualResult, DeviceStatusPanel, MiniIcon, ProfileCard, SectionIcon, StatusIcon, StepIllustration
+from .dashboard_widgets import BatteryIcon, DualResult, DeviceStatusPanel, MiniIcon, ProfileCard, SectionIcon, StatusIcon, StepIllustration
+
+
+PROFILE_H = 178     # 프로필 카드 높이 (이전 222 의 80 %)
+BOTTOM_H = 163      # 장비 상태 카드 높이 (이전 119 + 줄어든 프로필 높이 44)
 
 
 class PortStepRow(QFrame):
-    """검사 진행의 한 단계 줄: 번호 · 삽화 · 이름/상태/설명(또는 타이머) · 시작 버튼"""
+    """검사 진행의 현재 단계 카드 (한 번에 하나만 보인다): 번호·이름·상태 / 가운데 삽화 / 설명(또는 진행률) / 아래 시작 버튼.
+    카드(네모) 안을 위에서 아래로 채우도록 세로로 배치한다."""
 
     def __init__(self, index: int, name: str, parent=None):
         super().__init__(parent)
         self.setObjectName("stepCard")
         self.index = index
-        row = QHBoxLayout(self)
-        row.setContentsMargins(10, 6, 10, 6)
-        row.setSpacing(8)
-        self.num = QLabel(str(index + 1), objectName="stepNum")
-        self.num.setFixedSize(26, 26)
-        self.num.setAlignment(Qt.AlignCenter)
-        self.art = StepIllustration(index, 54)
-        row.addWidget(self.num, 0, Qt.AlignTop)
-        row.addWidget(self.art)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(14, 8, 14, 10)
+        v.setSpacing(4)
 
-        col = QVBoxLayout()
-        col.setSpacing(2)
         head = QHBoxLayout()
-        head.setSpacing(6)
+        head.setSpacing(8)
+        self.num = QLabel(str(index + 1), objectName="stepNum")
+        self.num.setFixedSize(34, 34)
+        self.num.setAlignment(Qt.AlignCenter)
         self.name = QLabel(f"{index + 1}단계. {name}", objectName="stepName")
         self.badge = QLabel("대기", objectName="stepBadge")
         self.badge.setAlignment(Qt.AlignCenter)
-        self.badge.setFixedHeight(20)
+        self.badge.setFixedHeight(28)
+        head.addWidget(self.num)
         head.addWidget(self.name)
-        head.addWidget(self.badge)
         head.addStretch(1)
-        col.addLayout(head)
+        head.addWidget(self.badge)
+        v.addLayout(head)
+
+        v.addStretch(1)
+        self.art = StepIllustration(index, 84)
+        v.addWidget(self.art, 0, Qt.AlignHCenter)
+
         self.desc = QLabel("", objectName="stepDesc", wordWrap=True)
-        self.desc.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        col.addWidget(self.desc, 1)
+        self.desc.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        v.addWidget(self.desc)
         self.prog = QWidget()
         pv = QVBoxLayout(self.prog)
         pv.setContentsMargins(0, 0, 0, 0)
         pv.setSpacing(2)
         self.time = QLabel("", objectName="stepTime")
+        self.time.setAlignment(Qt.AlignHCenter)
         self.bar = QProgressBar(objectName="stepBar")
         self.bar.setRange(0, 1000)
         self.bar.setTextVisible(False)
@@ -71,13 +78,13 @@ class PortStepRow(QFrame):
         bl.addWidget(self.pct)
         pv.addWidget(self.time)
         pv.addLayout(bl)
-        col.addWidget(self.prog)
-        row.addLayout(col, 1)
+        v.addWidget(self.prog)
+        v.addStretch(1)
 
         self.btn = QPushButton("", objectName="stepStartBtn")
-        self.btn.setFixedSize(104, 40)
+        self.btn.setFixedHeight(56)
         self.btn.setFocusPolicy(Qt.NoFocus)
-        row.addWidget(self.btn, 0, Qt.AlignVCenter)
+        v.addWidget(self.btn)
 
     def update_row(self, sv, btn_text: str, btn_enabled: bool, btn_visible: bool) -> None:
         _set_prop(self, "active", sv.active)
@@ -128,7 +135,7 @@ class PortraitDashboard(QWidget):
         top = QHBoxLayout()
         top.setSpacing(6)
         self.back_btn = QPushButton("←", objectName="dashBack")
-        self.back_btn.setFixedSize(36, 36)
+        self.back_btn.setFixedSize(46, 46)
         self.back_btn.setToolTip("로그인 화면으로")
         self.back_btn.setFocusPolicy(Qt.NoFocus)
         self.back_btn.clicked.connect(self.backRequested)
@@ -136,7 +143,7 @@ class PortraitDashboard(QWidget):
         self.tab_hist = QPushButton("검사이력", objectName="modelTab")      # 화면 전환(검사 항목이 아님)
         self.tab_hist.setText("이력")
         for b, active in ((self.tab_tro, True), (self.tab_hist, False)):
-            b.setFixedSize({id(self.tab_tro): 84}.get(id(b), 54), 34)
+            b.setFixedSize({id(self.tab_tro): 110}.get(id(b), 70), 44)
             b.setFocusPolicy(Qt.NoFocus)
             b.setProperty("active", active)
         self.tab_tro.setAttribute(Qt.WA_TransparentForMouseEvents, True)      # 누르는 탭이 아니라 상태 표시
@@ -146,11 +153,13 @@ class PortraitDashboard(QWidget):
         top.addWidget(self.tab_tro)
         top.addWidget(self.tab_hist)
         top.addStretch(1)
-        top.addSpacing(54)                       # 우측 상단 설정 버튼 자리 (AppWindow 가 위에 얹는다)
+        self.battery = BatteryIcon(78, 36)
+        top.addWidget(self.battery, 0, Qt.AlignVCenter)
+        top.addSpacing(60)                       # 우측 상단 설정 버튼 자리 (AppWindow 가 위에 얹는다)
         self._top_row = QWidget()
         self._top_row.setLayout(top)
         top.setAlignment(Qt.AlignVCenter)
-        self._top_row.setFixedHeight(46)               # 뒤로(36)·탭(34)보다 여유 있게 잡아 아래가 잘리지 않게 한다
+        self._top_row.setFixedHeight(58)               # 뒤로(36)·탭(34)보다 여유 있게 잡아 아래가 잘리지 않게 한다
         root.addWidget(self._top_row)            # 세로 화면은 글씨가 작아 날짜·시각은 보이지 않는다
 
         self.banner = QLabel("", objectName="dashBanner", wordWrap=True)
@@ -163,9 +172,10 @@ class PortraitDashboard(QWidget):
         bv = QVBoxLayout(body)
         bv.setContentsMargins(0, 0, 0, 0)
         bv.setSpacing(8)
-        bv.addWidget(self._build_profiles())
-        bv.addWidget(self._build_result())
-        bv.addWidget(self._build_progress(), 1)
+        bv.addWidget(self._build_profiles())                # 높이는 아래에서 고정 (이전보다 20% 짧게)
+        self.result_frame = self._build_result()      # 화면에는 넣지 않는다 (결과는 측정 완료 팝업). 렌더링 코드가 값을 채우므로 만들어만 둔다
+        self.result_frame.hide()
+        bv.addWidget(self._build_progress(), 1)             # 프로필이 줄어든 만큼 위로 올라오고, 남는 높이는 이 카드가 쓴다
         bv.addLayout(self._build_bottom())
         self.body_scroll = QScrollArea(objectName="dashScroll")
         self.body_scroll.setWidgetResizable(True)
@@ -184,14 +194,15 @@ class PortraitDashboard(QWidget):
 
     # ================= 만들기 =================
     def _build_profiles(self) -> QFrame:
-        f, v, head = card("프로필", "person")
+        f, v, head = card("프로필", "person", icon_size=34)
         f.setObjectName("dashCard")
         v.setContentsMargins(14, 10, 14, 10)
         v.setSpacing(6)
         self.profile_card_frame = f
+        f.setFixedHeight(PROFILE_H)
         self.profile_hint = QLabel("● 가족 구성원을 선택하세요.", objectName="profileHint")
         self.edit_btn = QPushButton("편집", objectName="smallBtn")
-        self.edit_btn.setFixedSize(54, 28)
+        self.edit_btn.setFixedSize(70, 36)
         self.edit_btn.setFocusPolicy(Qt.NoFocus)
         self.edit_btn.clicked.connect(lambda: self._selected and self.profileEditRequested.emit(self._selected))
         head.addWidget(self.profile_hint)
@@ -201,7 +212,6 @@ class PortraitDashboard(QWidget):
         self.profile_scroll.setObjectName("profileScroll")
         self.profile_scroll.setFrameShape(QFrame.NoFrame)
         self.profile_scroll.setWidgetResizable(True)
-        self.profile_scroll.setFixedHeight(68)
         self.profile_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.profile_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         QScroller.grabGesture(self.profile_scroll.viewport(), QScroller.LeftMouseButtonGesture)
@@ -209,9 +219,10 @@ class PortraitDashboard(QWidget):
         self._cards_host.setObjectName("profileHost")
         self._cards_row = QHBoxLayout(self._cards_host)
         self._cards_row.setContentsMargins(0, 2, 0, 2)
+        self._cards_row.setAlignment(Qt.AlignTop)
         self._cards_row.setSpacing(8)
         self.profile_scroll.setWidget(self._cards_host)
-        v.addWidget(self.profile_scroll)
+        v.addWidget(self.profile_scroll, 1)
         return f
 
     def _build_result(self) -> QFrame:
@@ -253,14 +264,14 @@ class PortraitDashboard(QWidget):
         return f
 
     def _build_progress(self) -> QFrame:
-        f, v, head = card("검사 진행", "flask")
+        f, v, head = card("검사 진행", "flask", icon_size=34)
         v.setContentsMargins(14, 10, 14, 10)
         v.setSpacing(6)
         self.reset_btn = QPushButton("처음부터", objectName="smallBtn")
         self.stop_btn = QPushButton("중지", objectName="smallDanger")
         self.monitor_btn = QPushButton("모니터링", objectName="smallBtn")
-        for b, w in ((self.reset_btn, 74), (self.stop_btn, 52), (self.monitor_btn, 78)):
-            b.setFixedSize(w, 30)
+        for b, w in ((self.reset_btn, 90), (self.stop_btn, 62), (self.monitor_btn, 94)):
+            b.setFixedSize(w, 40)
             b.setFocusPolicy(Qt.NoFocus)
             head.addWidget(b)
         self.reset_btn.clicked.connect(self._on_reset)
@@ -278,28 +289,29 @@ class PortraitDashboard(QWidget):
     def _build_bottom(self) -> QHBoxLayout:
         row = QHBoxLayout()
         row.setSpacing(8)
-        f, v, _ = card("장비 상태", "device")
+        f, v, _ = card("장비 상태", "device", icon_size=34)
         v.setContentsMargins(12, 8, 12, 8)
         v.setSpacing(4)
-        self.dev_panel = DeviceStatusPanel(40)
+        self.dev_panel = DeviceStatusPanel(58)
         v.addWidget(self.dev_panel)
         self.dev_icons, self.dev_labels, self.dev_module = self.dev_panel.icons, self.dev_panel.labels, self.dev_panel.module
-        row.addWidget(f, 5)
+        f.setFixedHeight(BOTTOM_H)                       # 프로필이 줄어든 만큼 위로 늘어난다 (높이 163)
+        row.addWidget(f, 13)
 
         self.history_btn = QPushButton("", objectName="historyLink")
         hl = QHBoxLayout(self.history_btn)
-        hl.setContentsMargins(12, 0, 12, 0)
-        hl.setSpacing(8)
+        hl.setContentsMargins(10, 0, 8, 0)
+        hl.setSpacing(6)
         icon = SectionIcon("doc", 30)
         icon.setAttribute(Qt.WA_TransparentForMouseEvents)
-        text = QLabel("검사 이력 보기  ›", objectName="historyLinkText", wordWrap=True)
+        text = QLabel("검사이력  ›", objectName="historyLinkText", wordWrap=True)
         text.setAttribute(Qt.WA_TransparentForMouseEvents)
         hl.addWidget(icon)
         hl.addWidget(text, 1)
         self.history_btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)     # 옆의 장비 상태 카드와 같은 높이
         self.history_btn.setFocusPolicy(Qt.NoFocus)
         self.history_btn.clicked.connect(self.historyRequested)
-        row.addWidget(self.history_btn, 4)
+        row.addWidget(self.history_btn, 7)
         self._bottom_widgets = (f, self.history_btn)
         return row
 
@@ -371,9 +383,8 @@ class PortraitDashboard(QWidget):
         if self._ctrl is None or self._view is None or i != self._view.stage_index:
             return
         if self._need_profile() and self.selected_profile() is None:
-            _set_prop(self.profile_card_frame, "error", True)
-            self._flash("프로필을 선택해 주세요. (없으면 [+ 추가] 로 만드세요.)", "warn", 0)
-            return
+            # 프로필을 고르지 않고 시작하면 가로 화면과 같이 데모용 TEST 정보로 검사한다 (프로필 목록에는 저장하지 않는다)
+            self._ctrl.patient = PatientProfile.from_texts(**DEMO_PROFILE).to_dict()
         was_done = self._view.state == State.DONE
         self._ctrl.primary()
         if was_done:                                   # 새 측정: 이전 사람 정보를 남기지 않는다
@@ -412,6 +423,9 @@ class PortraitDashboard(QWidget):
         if self._ctrl is not None:
             self.render(self._ctrl.snapshot())
 
+    def set_battery(self, volt, pct) -> None:
+        self.battery.set_value(volt, pct)
+
     def assay_blocked(self, text: str) -> None:
         self._flash(text, "warn")
 
@@ -422,16 +436,30 @@ class PortraitDashboard(QWidget):
                      "ref_low": self._cfg.ref_low, "ref_high": self._cfg.ref_high}
         sp = self.selected_profile()
         ctrl.patient = sp.to_dict() if sp else {}
+        ctrl.finished.connect(lambda _r: QTimer.singleShot(400, self._show_done_popup))
         ctrl.viewChanged.connect(self.render)
         self.render(ctrl.snapshot())
+
+    def _show_done_popup(self) -> None:
+        """측정이 끝나면 결과를 팝업으로 보여 준다. [확인] 을 누르면 바로 새 측정을 준비한다."""
+        v = self._view
+        if self._ctrl is None or v is None or v.state != State.DONE:
+            return
+        rv = result_view(self._cfg, v, self._run.wait_seen, self._run.finished_at)
+        dialogs.result_popup(self.window(), rv, self._cfg.method)
+        if self._ctrl.state == State.DONE:
+            self._ctrl.primary()
+            self.clear_selection()
 
     def render(self, v: ViewState) -> None:
         self._view = v
         self._run.update(v, bool(self._ctrl and self._ctrl._done))
         self._show_banner()
+        cur = min(v.stage_index, len(self.steps) - 1)
         for i, (row, sv) in enumerate(zip(self.steps, step_views(v))):
             text, enabled, visible = step_button(v, i)
             row.update_row(sv, text, enabled, visible)
+            row.setVisible(i == cur)                  # 한 번에 현재 단계 하나만 보이고, 1단계가 끝나면 2단계 화면으로 바뀐다
         self._render_device(device_view(v))
         self._render_result(result_view(self._cfg, v, self._run.wait_seen, self._run.finished_at))
         self.tab_tro.setText("검사완료" if v.state == State.DONE else "검사준비")

@@ -147,6 +147,8 @@ class MeasureController(QObject):
         self._module = {"fw": "", "cal": "", "board": ""}
         self._dirty = False
         self._session_open = False
+        self.pre_begin: Optional[Callable[[Callable[[], None]], None]] = None   # 모듈 확인(ENV …) 전에 할 일: 끝나면 넘겨 준 함수를 부른다 (배터리 확인)
+        self._pre_done = False                                                  # 이번 연결에서 pre_begin 을 이미 했다
 
         c = client
         c.connectionChanged.connect(self._on_connection)
@@ -227,6 +229,15 @@ class MeasureController(QObject):
             return
         self._set_state(State.CHECKING)
         self._set_banner("모듈을 확인하는 중입니다…", "info")
+        if self.pre_begin is not None and not self._pre_done:       # 연결 직후 한 번: 배터리 확인(AT+BATT) → 그다음 ENV
+            self._pre_done = True
+            self.pre_begin(self._check_module)
+            return
+        self._check_module()
+
+    def _check_module(self) -> None:
+        if self._state != State.CHECKING or not self.client.connected:      # 기다리는 동안 연결이 끊겼으면 하지 않는다
+            return
         # 모듈이 살아 있는지는 ENV 응답으로 확인한다 ("ENV not available" 도 응답이므로 살아 있는 것). 나머지는 정보용.
         self._run_chain([p.CMD_ENV, p.CMD_STATUS, p.CMD_CALSTATUS], self._check_done, self._check_failed,
                         tolerant=(p.CMD_STATUS, p.CMD_CALSTATUS))
@@ -236,10 +247,7 @@ class MeasureController(QObject):
         self._module["fw"] = self._module["fw"] or ""
         self._module["cal"] = "보정 있음" if cal.get("VALID") == "1" else "보정 없음"
         self._module["board"] = cal.get("BOARD_ID", "")
-        if cal.get("VALID") != "1":
-            self._set_banner("이 모듈에는 SHORT 보정이 저장되어 있지 않습니다. 측정값에 보드 오프셋이 포함됩니다.", "warn")
-        else:
-            self._set_banner("", "info")
+        self._set_banner("", "info")        # 데모: SHORT 보정이 없다는 경고는 띄우지 않는다
         self._enter_ready()
 
     def _check_failed(self, msg: str) -> None:
@@ -272,7 +280,7 @@ class MeasureController(QObject):
             self.store.note(f"stage {stage.key} configure")
         self._run_chain(
             [p.cmd_sweep(s.start_hz, s.stop_hz, s.points), p.cmd_chan(s.channels), p.cmd_verb("FULL"),
-             p.cmd_start(1)],
+             p.cmd_rtia(s.rtia_ohm), p.cmd_start(1)],
             on_ok=lambda: None, on_fail=self._config_failed)
 
     def _config_failed(self, msg: str) -> None:
@@ -442,6 +450,7 @@ class MeasureController(QObject):
             if self._state in (State.DISCONNECTED, State.NO_MODULE):
                 self.begin()
         elif self._state in (State.CHECKING, State.READY, State.NO_MODULE):
+            self._pre_done = False
             self._chain = None
             self._set_banner("UART 연결이 끊겼습니다.", "warn")
             self._set_state(State.DISCONNECTED)

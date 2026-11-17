@@ -12,6 +12,7 @@ from pathlib import Path
 from app.auth.recent_ids import RecentIds
 from app.auth.server_auth import ServerAuth
 from app.auth.skip_auth import SkipAuth
+from app.comm.battery import BatteryMonitor
 from app.comm.firmware_client import FirmwareClient
 from app.comm.traffic_log import TrafficLog
 from app.comm.sensor import BUILTIN, OFF, PATCH, SensorStore, describe, make_transport, normalize
@@ -50,7 +51,7 @@ def _recent_path(root: Path) -> Path:
 
 
 # 우측 상단 설정 버튼: (크기, 오른쪽 여백, 위 여백). 측정 화면의 '뒤로' 버튼과 세로 중심이 같도록 잡았다.
-GEAR_PORTRAIT = (44, 12, 12)
+GEAR_PORTRAIT = (56, 12, 13)
 GEAR_LANDSCAPE = (44, 24, 12)
 
 # 세로 패널은 보이는 영역이 실제 해상도보다 조금 작아 맨 아래 글자가 잘린다 → 아래쪽에 쓰지 않는 여백을 두고 화면을 그만큼 올린다.
@@ -133,6 +134,11 @@ class AppWindow(QStackedWidget):
         self.settings.sensor.patchCleared.connect(self._on_patch_cleared)
         self.worker.connectionChanged.connect(self._on_link_changed)
         self.controller.viewChanged.connect(self._on_controller_view)      # STATUS 확인 결과 반영
+        # 배터리: 1분마다 AT+BATT (유선 UART 만, 측정 중에는 확인하지 않는다)
+        self.battery = BatteryMonitor(self.worker.send_line, self._battery_allowed, parent=self, link_ok=self._battery_link_ok)
+        self.controller.pre_begin = self.battery.check_now        # 모듈 확인(ENV) 전에 배터리(AT+BATT)부터 확인
+        self.worker.lineReceived.connect(self.battery.on_line)
+        self.battery.changed.connect(self.measure.set_battery)
         self.worker.errorOccurred.connect(self._on_link_error)
         self._refresh_sensor_status()
         self.addWidget(self.login)
@@ -333,6 +339,7 @@ class AppWindow(QStackedWidget):
         if persist:
             self.sensor_store.save(mode)
         self.worker.set_transport(make_transport(mode, self._sensor_cfg()))
+        self.battery.reset()                      # 센서가 바뀌면 값을 지우고 유선 UART 일 때 다시 확인한다
         self.settings.sensor.set_mode(mode)
         self._refresh_sensor_status()
         log.info("sensor mode: %s", mode)
@@ -345,11 +352,26 @@ class AppWindow(QStackedWidget):
 
     def _on_controller_view(self, _view=None) -> None:
         self._refresh_sensor_status()
+        if getattr(self, "battery", None) is not None:
+            self.battery.poke()                   # 측정이 끝났으면 밀린 배터리 확인을 한다
+
+    def _battery_link_ok(self) -> bool:
+        return self.sensor_mode == BUILTIN and self.client.connected      # 연결 알림 순서와 무관하게 실제 연결 상태를 본다
+
+    def _battery_allowed(self) -> bool:
+        """배터리 확인을 보내도 되는가: 유선 UART(내장 센서)가 연결돼 있고, 검사 진행 중이 아닐 때만."""
+        if not self._battery_link_ok() or self.controller.state == State.CHECKING:
+            return False
+        return not self._test_in_progress()       # 측정 중이거나 단계 사이(검사 진행 중)에는 보내지 않는다
 
     def _on_link_changed(self, connected: bool) -> None:
         if connected:
             self._link_error = ""
         self._refresh_sensor_status(connected)
+        if connected:
+            self.battery.poke()
+        else:
+            self.battery.reset()
 
     def _on_link_error(self, msg: str) -> None:
         self._link_error = msg

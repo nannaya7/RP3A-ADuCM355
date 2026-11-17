@@ -60,6 +60,8 @@ class MockFirmware:
         self._gen = None
         self._due = 0.0
         self.running = False
+        self.batt_volt, self.batt_pct = 4.15, 95        # AT+BATT 응답값 (테스트에서 바꿀 수 있다)
+        self.batt_silent = False
         self._reset_config()
 
     def _reset_config(self) -> None:
@@ -68,6 +70,7 @@ class MockFirmware:
         self.mask = 0x7
         self.verb = "FULL"
         self.rcal = 1000.0
+        self.rtia = "AUTO"
         self.signal = (300.0, "X0P2", "X0P25")
         self.cycles = 0
         self.cycle_done = 0
@@ -148,6 +151,11 @@ class MockFirmware:
         words = line.upper().split()
         if not words:
             return
+        if words[0] == "AT+BATT":              # UPS 배터리 확인 (펌웨어 줄 형식이 아닌 AT 응답)
+            if self.batt_silent:                # 시험용: 응답하지 않는 장치
+                return
+            self._immediate.append(f"AT+BATT,{self.batt_volt:.2f}V,{self.batt_pct}%")
+            return
         handler = getattr(self, "_cmd_" + words[0].lower(), None)
         if handler is None:
             self._info("ERR", "unknown command")
@@ -200,6 +208,13 @@ class MockFirmware:
             self._info("INFO", f"VERB={w[1]}")
         else:
             self._info("ERR", "unknown verbosity")
+
+    def _cmd_rtia(self, w) -> None:
+        if len(w) < 2:
+            self._info("ERR", "usage: RTIA <OHM|AUTO>")
+            return
+        self.rtia = w[1]
+        self._info("INFO", f"RTIA set {w[1]}")
 
     def _cmd_signal(self, w) -> None:
         if len(w) < 4:
