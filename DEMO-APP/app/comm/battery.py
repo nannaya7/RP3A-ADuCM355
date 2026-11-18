@@ -1,5 +1,7 @@
 """배터리 상태 확인 (UPS). 유선 UART 로 `AT+BATT` 를 1분마다 보내 `AT+BATT,4.15V,95%` 응답을 읽는다.
-명령은 다른 명령과 같이 FirmwareClient 의 명령 큐로 보낸다: 한 번에 하나만 보내고, 응답을 받은 뒤에 다음 명령을 보낸다.
+- 내장 센서(유선 UART)일 때: 다른 명령과 같이 FirmwareClient 의 명령 큐로 보낸다 (한 번에 하나, 응답을 받은 뒤 다음 명령).
+- 패치 센서(BLE)일 때: 통신 통로가 BLE 라서 유선 포트를 따로 잠깐 열어 보내고 바로 닫는다 (read_battery_direct).
+  AT 명령은 어느 쪽이든 BLE 로는 보내지 않는다.
 
 - 측정 중(확인·구성·측정·중지·계산)에는 보내지 않는다. 측정이 끝나면 밀린 확인을 바로 한다.
 - 유선 UART(내장 센서)일 때만 보낸다. 패치 센서(BLE)로는 보내지 않는다.
@@ -8,6 +10,7 @@
 - 응답이 오지 않으면 직전 값을 유지하다가, 연속 MISS_LIMIT 번 실패하면 "알 수 없음"으로 바꾼다.
 """
 import re
+import threading
 import time
 from typing import Callable, Optional
 
@@ -18,6 +21,7 @@ INTERVAL_MS = 60_000          # 확인 간격: 1분
 FAST_RETRY_MS = 3_000         # 값을 아직 모를 때(앱 시작 직후, 응답 없음)는 이 간격으로 다시 확인한다
 REPLY_TIMEOUT_MS = 3_000      # 응답을 기다리는 시간
 MISS_LIMIT = 3
+DIRECT_TIMEOUT_S = 1.5        # 유선 포트를 따로 열어 읽을 때 응답을 기다리는 시간
 _RX = re.compile(r"^AT\+BATT,\s*([0-9.]+)\s*V,\s*(\d{1,3})\s*%$", re.IGNORECASE)
 
 
@@ -29,6 +33,33 @@ def parse_batt(line: str) -> Optional[tuple]:
     return float(m.group(1)), max(0, min(100, int(m.group(2))))
 
 
+def read_battery_direct(make_transport: Callable, timeout_s: float = DIRECT_TIMEOUT_S) -> Optional[tuple]:
+    """전송 장치를 새로 열어 `AT+BATT` 를 한 번 보내고 응답을 읽은 뒤 닫는다. (전압, 잔량) 또는 None (열기 실패·응답 없음).
+    패치 센서(BLE)를 쓰는 동안 유선 UART 로 배터리를 읽는 데 쓴다. 블로킹이므로 배경 스레드에서 부른다."""
+    from .protocol import LineBuffer
+    try:
+        t = make_transport()
+        t.open()
+    except OSError:
+        return None
+    try:
+        t.write((CMD_BATT + "\r\n").encode("ascii"))
+        lines, deadline = LineBuffer(), time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            for line in lines.feed(t.read()):
+                parsed = parse_batt(line)
+                if parsed is not None:
+                    return parsed
+    except OSError:
+        return None
+    finally:
+        try:
+            t.close()
+        except OSError:
+            pass
+    return None
+
+
 def level_of(pct: Optional[int]) -> int:
     """아이콘 단계 0~4 (0 = 알 수 없음). 75% 이상 4, 50% 이상 3, 25% 이상 2, 그 아래 1."""
     if pct is None:
@@ -38,12 +69,18 @@ def level_of(pct: Optional[int]) -> int:
 
 class BatteryMonitor(QObject):
     changed = pyqtSignal(object, object)       # (전압 V, 잔량 %) — 알 수 없으면 (None, None)
+    _directDone = pyqtSignal(object)           # 배경 스레드의 직접 읽기 결과 (전압, 잔량) 또는 None
 
     def __init__(self, send: Callable[[str], None], allowed: Callable[[], bool], parent=None,
                  interval_ms: int = INTERVAL_MS, reply_timeout_ms: int = REPLY_TIMEOUT_MS,
-                 fast_retry_ms: int = FAST_RETRY_MS, link_ok: Optional[Callable[[], bool]] = None):
+                 fast_retry_ms: int = FAST_RETRY_MS, link_ok: Optional[Callable[[], bool]] = None,
+                 direct: Optional[Callable[[], Optional[tuple]]] = None, use_direct: Optional[Callable[[], bool]] = None):
         super().__init__(parent)
         self._send = send
+        self._direct = direct                  # 패치 센서일 때 쓰는 읽기 함수 (블로킹, 배경 스레드에서 실행)
+        self._use_direct = use_direct or (lambda: False)
+        self._busy = False                     # 직접 읽기가 진행 중
+        self._directDone.connect(self._on_direct)
         self._allowed = allowed                # 지금 보내도 되는가 (유선 UART 연결 + 측정 중 아님)
         self._link_ok = link_ok or allowed     # 시작 확인용: 유선 UART 가 연결돼 있는가 (검사 상태는 보지 않는다)
         self._start_cbs: list = []             # check_now 로 기다리는 중인 콜백
@@ -90,13 +127,20 @@ class BatteryMonitor(QObject):
         self._due = True
         self._query(force=True)
 
-    def reset(self) -> None:
-        """연결이 끊기거나 센서가 바뀌었다: 값을 알 수 없음으로 되돌리고 다시 연결되면 바로 확인한다."""
+    @property
+    def busy(self) -> bool:
+        """유선 포트를 따로 열어 읽는 중인가 (이 동안은 검사를 시작하지 않고 기다린다)."""
+        return self._busy
+
+    def reset(self, clear: bool = False) -> None:
+        """연결이 끊기거나 센서가 바뀌었다: 진행 중인 확인을 끊고 곧 다시 확인한다.
+        직전 값은 지우지 않고 (게이지가 갑자기 비지 않게) 연속으로 MISS_LIMIT 번 읽지 못할 때만 알 수 없음으로 바꾼다."""
         self._reply_timer.stop()
         self._waiting = False
-        self._misses = 0
         self._due = True
-        self._set(None, None)
+        if clear:
+            self._misses = 0
+            self._set(None, None)
         self._flush_start()
 
     def on_finished(self, text: str, ok: bool, msg: str) -> None:
@@ -132,9 +176,32 @@ class BatteryMonitor(QObject):
         for cb in cbs:
             cb()
 
+    def _start_direct(self) -> None:
+        """패치 센서일 때: 유선 포트를 따로 열어 읽는다 (배경 스레드)."""
+        self._due = False
+        self._waiting = True
+        self._busy = True
+        self._reply_timer.start()
+
+        def work():
+            try:
+                res = self._direct()
+            except Exception:                  # 배경 스레드의 예외는 앱을 죽이지 않게 삼킨다
+                res = None
+            self._directDone.emit(res)
+
+        threading.Thread(target=work, name="battery-direct", daemon=True).start()
+
+    def _on_direct(self, res) -> None:
+        self._busy = False
+        self.on_finished(CMD_BATT, res is not None, f"AT+BATT,{res[0]:.2f}V,{res[1]}%" if res else "")
+
     def _query(self, force: bool = False) -> None:
         if self._waiting or not (self._link_ok() if force else self._allowed()):
             return                             # 못 보내면 _due 를 남겨 두고 poke() 때 다시 시도한다
+        if not force and self._direct is not None and self._use_direct():
+            self._start_direct()
+            return
         self._due = False
         self._waiting = True
         self._reply_timer.start()

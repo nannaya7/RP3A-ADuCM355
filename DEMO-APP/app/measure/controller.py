@@ -149,6 +149,7 @@ class MeasureController(QObject):
         self._session_open = False
         self.pre_begin: Optional[Callable[[Callable[[], None]], None]] = None   # 모듈 확인(ENV …) 전에 할 일: 끝나면 넘겨 준 함수를 부른다 (배터리 확인)
         self._pre_done = False                                                  # 이번 연결에서 pre_begin 을 이미 했다
+        self.start_blocker: Optional[Callable[[], bool]] = None                 # True 이면 측정을 시작하지 않고 기다린다
 
         c = client
         c.connectionChanged.connect(self._on_connection)
@@ -262,6 +263,9 @@ class MeasureController(QObject):
     # ================= 단계 실행 =================
     def start_stage(self) -> None:
         if self._state != State.READY:
+            return
+        if self.start_blocker is not None and self.start_blocker():       # 배터리를 읽는 중이면 끝난 뒤에 시작 (측정 중에는 AT 명령을 보내지 않으므로)
+            QTimer.singleShot(150, self.start_stage)
             return
         if not self._session_open and self.store is not None:
             self.store.open()
