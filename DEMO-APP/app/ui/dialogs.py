@@ -60,6 +60,12 @@ class _Popup(QDialog):
         self.accept()
 
 
+class _LockedPopup(_Popup):
+    """진행 팝업: Esc 로도 닫히지 않는다."""
+    def keyPressEvent(self, e) -> None:
+        e.ignore()
+
+
 def _run(parent, text: str, buttons, extra: Optional[QWidget] = None, min_width: int = 340) -> int:
     box = _Popup(parent, text, buttons, extra)
     box.setMinimumWidth(min_width)
@@ -79,11 +85,64 @@ def notify(parent, text: str, ok: str = "확인") -> None:
     _run(parent, text, [(ok, True)])
 
 
-def result_popup(parent, rv, method: str = "", ok: str = "확인") -> None:
-    """측정 완료 팝업: "측정 완료되었습니다." 아래에 결과 카드를 보여 주고 [확인] 하나만 둔다.
-    rv: dashboard_logic.ResultView (rows, ready, info_wait, info_done)."""
+ANALYZE_SECONDS = 160           # 검사가 끝난 뒤 결과를 보여 주기까지 진행 팝업을 보여 주는 시간
+
+
+def _result_box(parent, rv, method: str, ok: str) -> _Popup:
     from .dashboard_widgets import ResultSummary            # 순환 import 를 피하려고 쓸 때 불러온다
     infos = (("측정 시간", rv.info_wait), ("검증 완료 시간", rv.info_done), ("검사 방법", method or "—"))
     narrow = parent is not None and parent.width() < 600     # 세로(480px) 화면에서는 폭을 줄인다
-    summary = ResultSummary(rv.rows, rv.ready, infos)
-    _run(parent, "측정 완료되었습니다.", [(ok, True)], extra=summary, min_width=440 if narrow else 640)
+    box = _Popup(parent, "측정 완료되었습니다.", [(ok, True)], ResultSummary(rv.rows, rv.ready, infos))
+    box.setMinimumWidth(440 if narrow else 640)
+    return box
+
+
+def _progress_box(parent, size, seconds: int) -> _Popup:
+    """결과 팝업과 같은 크기의 진행 팝업: 진행바 + 퍼센트 + 남은 시간. 닫기·버튼 없이 시간이 되면 스스로 닫힌다."""
+    from PyQt5.QtCore import QElapsedTimer, QTimer
+    from PyQt5.QtWidgets import QProgressBar
+    body = QWidget()
+    lay = QVBoxLayout(body)
+    lay.setContentsMargins(24, 0, 24, 0)
+    lay.setSpacing(14)
+    lay.addStretch(1)
+    pct = QLabel("0%", objectName="popupPercent")
+    pct.setAlignment(Qt.AlignCenter)
+    bar = QProgressBar(objectName="popupProgress")
+    bar.setRange(0, 1000)
+    bar.setTextVisible(False)
+    for w in (pct, bar):
+        lay.addWidget(w)
+    lay.addStretch(1)
+    box = _LockedPopup(parent, "결과를 분석하고 있습니다.", [], body)
+    box.findChild(QPushButton, "popupClose").hide()           # 진행 중에는 닫을 수 없다
+    box.setFixedSize(size)
+    clock = QElapsedTimer()
+    clock.start()
+    tick = QTimer(box)
+
+    def update() -> None:
+        ms = min(clock.elapsed(), seconds * 1000)
+        bar.setValue(int(ms * 1000 / (seconds * 1000)))
+        pct.setText(f"{ms * 100 // (seconds * 1000)}%")
+        if ms >= seconds * 1000:
+            tick.stop()
+            box.accept()
+
+    tick.timeout.connect(update)
+    tick.start(100)
+    update()
+    return box
+
+
+def result_popup(parent, rv, method: str = "", ok: str = "확인", analyze_s: int = ANALYZE_SECONDS) -> None:
+    """검사 완료 팝업: 먼저 진행율 팝업을 analyze_s 초 동안 보여 주고(0 이면 생략), 이어서 같은 크기의 결과 팝업을 띄운다.
+    rv: dashboard_logic.ResultView (rows, ready, info_wait, info_done)."""
+    result = _result_box(parent, rv, method, ok)
+    if analyze_s > 0:
+        result.adjustSize()
+        wait = _progress_box(parent, result.size(), analyze_s)
+        wait.exec_()
+        wait.deleteLater()
+    result.exec_()
+    result.deleteLater()

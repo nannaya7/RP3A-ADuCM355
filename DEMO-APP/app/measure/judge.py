@@ -1,9 +1,9 @@
 """데모 판정: 채널별 평균 임피던스(|Z|)로 결과를 정한다. Qt 의존 없음.
 
-채널별 평균 |Z| 가 1 kΩ 이하이면 0 Ω(쇼트), 6 kΩ 이상이면 9.1 kΩ 으로 본다 (그 사이는 어느 쪽도 아님).
+채널별 평균 |Z| 가 1 kΩ 를 경계로 이하이면 0 Ω(쇼트), 초과(이상)이면 9.1 kΩ 으로 본다.
 센서 3개(CH0~CH2 = 화면의 1~3번 채널) 중 하나만 9.1 kΩ 이고 나머지 둘이 0 Ω 이면:
-    1번 채널(나머지 둘이 0 Ω) → Troponin 50 pg/mL  + NT-proBNP 400 pg/mL  의 ±8 % 안에서 무작위 값
-    2번 채널(나머지 둘이 0 Ω) → Troponin 300 pg/mL + NT-proBNP 50 pg/mL   의 ±8 % 안에서 무작위 값
+    1번 채널(나머지 둘이 0 Ω) → Troponin 50 pg/mL  + NT-proBNP 400 pg/mL  의 ±4 % 안에서 무작위 값
+    2번 채널(나머지 둘이 0 Ω) → Troponin 300 pg/mL + NT-proBNP 50 pg/mL   의 ±4 % 안에서 무작위 값
     3번 채널(나머지 둘이 0 Ω) → 항상 정량실패 (두 항목 모두, 값 없음)
 그 밖의 조합은 판정하지 않는다 (matched_ch = None).
 """
@@ -11,9 +11,8 @@ import random
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-ZERO_MAX_OHM = 1000.0             # 이 값(1 kΩ) 이하이면 0 Ω(쇼트)으로 본다
-REF_MIN_OHM = 6000.0              # 이 값(6 kΩ) 이상이면 9.1 kΩ 으로 본다
-RESULT_TOLERANCE = 0.08           # 1·2번 채널 결과: 지정값의 ±8 % (총 16 %) 안에서 무작위
+ZERO_MAX_OHM = 1000.0             # 경계: 이 값(1 kΩ) 이하는 0 Ω(쇼트), 넘으면 9.1 kΩ
+RESULT_TOLERANCE = 0.04           # 1·2번 채널 결과: 지정값의 ±4 % (총 8 %) 안에서 무작위
 UNIT = "pg/mL"
 # 9.1 kΩ 이 걸린 채널 번호(0부터) → (Troponin, NT-proBNP). None = 정량실패
 CASES = {0: (50.0, 400.0), 1: (300.0, 50.0), 2: (None, None)}
@@ -33,7 +32,7 @@ class Verdict:
 
 
 def is_ref(ohm: float) -> bool:
-    return ohm >= REF_MIN_OHM
+    return ohm > ZERO_MAX_OHM            # 경계(1 kΩ) 를 넘으면 9.1 kΩ
 
 
 def is_zero(ohm: float) -> bool:

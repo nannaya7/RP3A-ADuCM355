@@ -332,6 +332,9 @@ QProgressBar#devBar::chunk { background: #2FAF87; border-radius: 4px; }
 #popupClose { background: transparent; color: #FFFFFF; border: none; font-size: 15px; font-weight: 700; }
 #popupBody { background: #F4F9F6; border: 2px solid #8A929B; border-top: none; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }
 #popupText { background: transparent; color: #2B2B2B; font-size: 22px; }
+QProgressBar#popupProgress { background: #DCE9E2; border: none; border-radius: 12px; min-height: 24px; max-height: 24px; }
+QProgressBar#popupProgress::chunk { background: #2FAF87; border-radius: 12px; }
+#popupPercent { background: transparent; color: #1D7A5A; font-size: 44px; font-weight: 700; }
 #popupBtn { background: #FFFFFF; color: #424242; border: 1px solid #C9D8D1; border-radius: 10px; font-size: 17px; }
 #popupBtn:pressed { background: #E3EFE9; }
 #popupBtn[primary="true"] { background: #2FAF87; color: #FFFFFF; border: none; font-weight: 700; }
